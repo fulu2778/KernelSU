@@ -80,8 +80,8 @@ Junte-se ao nosso canal %2$s</string>
     <string name="settings_sucompat_summary">Permite que apps com permissão de Superutilizador no Perfil da App obtenham um shell de superutilizador executando /system/bin/su; eficaz apenas para novos processos.</string>
     <string name="settings_kernel_umount">Desmontar kernel</string>
     <string name="settings_kernel_umount_summary">Comportamento de desmontagem ao nível do kernel controlado pelo KernelSU</string>
-    <string name="settings_selinux_spoof">Hide SELinux audit</string>
-    <string name="settings_selinux_spoof_summary">Prevent apps from detecting root through avc audit logs</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in SELinux audit logs, hiding root traces from apps</string>
     <string name="settings_fake_lock">Ocultar estado do Bootloader</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 

@@ -269,8 +269,8 @@
     <string name="settings_adb_root_summary">以 Root 权限运行 adbd 守护进程</string>
     <string name="settings_selinux_hide">隐藏 SELinux 修改</string>
     <string name="settings_selinux_hide_summary">阻止应用检测 SELinux 修改</string>
-    <string name="settings_selinux_spoof">隐藏 SELinux 审计</string>
-    <string name="settings_selinux_spoof_summary">阻止应用通过审计日志检测 root</string>
+    <string name="settings_selinux_spoof">伪装 SELinux 审计</string>
+    <string name="settings_selinux_spoof_summary">在 SELinux 审计日志中隐藏 ksu 域痕迹，防止应用发现 root</string>
     <string name="settings_fake_lock">一定程度上隐藏 BL 解锁状态</string>
     <string name="settings_fake_lock_summary">将设备伪装为 BL 未解锁状态，避免应用检测</string>
 

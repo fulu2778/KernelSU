@@ -64,8 +64,8 @@
     <string name="settings_sucompat_summary">تغییر مسیر /system/bin/su به ksud برای برنامه‌هایی که مجوز Superuser در پروفایل برنامه دارند؛ فقط برای فرآیندهای جدید موثر است.</string>
     <string name="settings_kernel_umount">جداسازی هسته</string>
     <string name="settings_kernel_umount_summary">رفتار جداسازی در سطح هسته که توسط KernelSU کنترل می‌شود</string>
-    <string name="settings_selinux_spoof">Hide SELinux audit</string>
-    <string name="settings_selinux_spoof_summary">Prevent apps from detecting root through avc audit logs</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in SELinux audit logs, hiding root traces from apps</string>
     <string name="settings_fake_lock">پنهان کردن وضعیت Bootloader</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
