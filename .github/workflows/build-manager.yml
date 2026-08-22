@@ -215,17 +215,6 @@ jobs:
           name: "mappings"
           path: "manager/app/build/outputs/mapping/release/"
 
-      # 发布 GitHub Release 供 Manager 内"检测更新"使用 (指向本 fork 仓库)。
-      # tag 用 commit sha (每次手动发布唯一); Manager 只解析 asset 文件名,
-      # 不依赖 tag 名。避免中间步骤输出求值为空被 Actions 移除。
-      - name: Publish GitHub Release
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ github.sha }}
-          files: manager/app/build/outputs/apk/release/*.apk
-          body: |
-            Auto-built from main (${{ github.sha }})
 
   repack-manager:
     needs: [build-manager, build-ksud, generate-key]
@@ -330,6 +319,18 @@ jobs:
         with:
           name: manager
           path: dist/*.apk
+
+      # 发布完整版 (repack 后含 ksud 等二进制) GitHub Release, 供 Manager
+      # 内"检测更新"使用。tag 用 commit sha (手动发布唯一); Manager 只
+      # 解析 asset 文件名, 不依赖 tag 名。
+      - name: Publish GitHub Release
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.sha }}
+          files: dist/*.apk
+          body: |
+            Auto-built from main (${{ github.sha }})
 
       - name: Bot session cache
         if: github.event_name != 'pull_request' && steps.need_upload.outputs.UPLOAD == 'true'
