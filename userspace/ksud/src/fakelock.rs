@@ -22,6 +22,7 @@ use std::path::Path;
 use crate::defs;
 use crate::feature::{set_kernel_feature, FeatureId};
 use prop_rs_android::resetprop::ResetProp;
+use prop_rs_android::sys_prop;
 
 const FLAG_PATH: &str = concatcp!(defs::WORKING_DIR, ".fakelock_enabled");
 

@@ -12,6 +12,8 @@ use crate::{
     apk_sign, assets, debug, defs, init_event, ksu_uapi, ksucalls, module,
     module_config, sulog, utils,
 };
+#[cfg(target_os = "android")]
+use crate::fakelock;
 
 /// KernelSU userspace cli
 #[derive(Parser, Debug)]
