@@ -32,15 +32,44 @@
 #include <linux/percpu.h>
 #include <linux/seq_file.h>
 #include <linux/mount.h>
+#include <linux/namei.h>
 #include <linux/path.h>
 #include <linux/dcache.h>
+#include <linux/cred.h>
+#include <linux/sched.h>
 #include <linux/string.h>
+#include <linux/workqueue.h>
 #include <asm/ptrace.h>
 
 #define MOUNT_HIDE_PREFIX "/adb/modules"
 #define MOUNT_HIDE_BUF_SIZE (PATH_MAX * 2)
 
 static bool ksu_mount_hide_enabled __read_mostly = true;
+
+/* /data/adb/modules 目录 dentry 缓存: 判据0 的纯指针快路径。
+ * LKM 在 ramdisk 阶段加载时 /data 尚未挂载, 由 delayed work 重试解析;
+ * 持引用(dget)防释放, 若 /data 重挂导致 dentry 陈旧, 判据0 失配后
+ * 仍由判据1/2 字符串兜底, 不产生误放行。 */
+static struct dentry *modules_dentry __read_mostly;
+static struct delayed_work modules_dentry_work;
+#define MODULES_DENTRY_PATH "/data/adb/modules"
+
+static void modules_dentry_resolve(struct work_struct *w)
+{
+    struct path path;
+    static int attempts;
+
+    if (kern_path(MODULES_DENTRY_PATH, LOOKUP_FOLLOW, &path) == 0) {
+        struct dentry *old = xchg(&modules_dentry, path.dentry);
+        if (old)
+            dput(old);
+        mntput(path.mnt); /* 只释放 mnt 引用, dentry 引用移交缓存 */
+        pr_info("mount_hide: fast path armed (%s)\n", MODULES_DENTRY_PATH);
+        return;
+    }
+    if (++attempts < 12) /* 每 5s 重试, 1 分钟后放弃 */
+        schedule_delayed_work(&modules_dentry_work, msecs_to_jiffies(5000));
+}
 
 /* pre_handler 运行于原子上下文(本 CPU 关抢占)，per-cpu 双缓冲替代
  * 每条目 16KB 的 GFP_ATOMIC 分配；show_* 入口不可能同 CPU 嵌套 */
@@ -65,11 +94,30 @@ static bool mount_root_is_sus_mount(struct vfsmount *mnt)
 {
     char(*buf)[MOUNT_HIDE_BUF_SIZE];
     const char *path, *root;
+    struct dentry *cached;
     bool hit = false;
     int i;
 
     if (unlikely(!mnt || !mnt->mnt_root || !ksu_mount_hide_enabled))
         return false;
+
+    /* root 读者(自己人)直接放行: 调试可见真实挂载, 也省掉其全部开销 */
+    if (uid_eq(current_uid(), GLOBAL_ROOT_UID))
+        return false;
+
+    /* 判据0 (快路径, 纯指针): bind mount 的 mnt_root 即源文件 dentry,
+	 * 落在 /data/adb/modules 树内则必为模块挂载, 无需任何字符串运算。
+	 * dentry 由 delayed work 异步解析(LKM 加载时 /data 尚未挂载),
+	 * 解析成功前该判据静默跳过, 由判据1/2 兜底。 */
+    cached = READ_ONCE(modules_dentry);
+    if (cached) {
+        bool sub;
+        rcu_read_lock();
+        sub = is_subdir(mnt->mnt_root, cached);
+        rcu_read_unlock();
+        if (sub)
+            return true;
+    }
 
     buf = get_cpu_var(mount_hide_buf);
 
@@ -187,6 +235,9 @@ int __init ksu_mount_hide_init(void)
 
     ksu_register_feature_handler(&mount_hide_handler);
 
+    INIT_DELAYED_WORK(&modules_dentry_work, modules_dentry_resolve);
+    schedule_delayed_work(&modules_dentry_work, msecs_to_jiffies(5000));
+
     pr_info("mount_hide: active (%s)\n", MOUNT_HIDE_PREFIX);
     return 0;
 
@@ -200,6 +251,9 @@ err_vfsmnt:
 void __exit ksu_mount_hide_exit(void)
 {
     ksu_unregister_feature_handler(KSU_FEATURE_MOUNT_HIDE);
+    cancel_delayed_work_sync(&modules_dentry_work);
+    if (modules_dentry)
+        dput(modules_dentry);
     mount_hide_kp_teardown(&kp_vfsstat);
     mount_hide_kp_teardown(&kp_vfsmnt);
     mount_hide_kp_teardown(&kp_mountinfo);
