@@ -60,7 +60,11 @@ static int bootconfig_pre(struct kprobe *p, struct pt_regs *regs)
     /* root 读者(自己人)透传真实内容 */
     if (uid_eq(current_uid(), GLOBAL_ROOT_UID))
         return 0;
+#ifdef __x86_64__
+    regs->ip = (unsigned long)fake_boot_config_proc_show;
+#else
     regs->pc = (unsigned long)fake_boot_config_proc_show;
+#endif
     return 1;
 }
 
