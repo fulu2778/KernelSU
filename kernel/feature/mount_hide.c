@@ -115,6 +115,7 @@ static bool mount_root_is_sus_mount(struct vfsmount *mnt)
 /* kprobe pre_handler: x0=seq_file*, x1=vfsmount* (arm64) */
 static int mount_hide_pre(struct kprobe *p, struct pt_regs *regs)
 {
+#ifdef __aarch64__
     struct vfsmount *mnt = (struct vfsmount *)regs->regs[1];
 
     if (mount_root_is_sus_mount(mnt)) {
@@ -122,6 +123,15 @@ static int mount_hide_pre(struct kprobe *p, struct pt_regs *regs)
         return 1; /* 跳过原指令单步，直接执行 trampoline */
     }
     return 0;
+#elif defined(__x86_64__)
+    struct vfsmount *mnt = (struct vfsmount *)regs->si;
+
+    if (mount_root_is_sus_mount(mnt)) {
+        regs->ip = (unsigned long)mount_hide_skip_show;
+        return 1; /* 跳过原指令单步，直接执行 trampoline */
+    }
+    return 0;
+#endif
 }
 
 static int mount_hide_kp_setup(struct kprobe *kp, const char *name)
