@@ -155,7 +155,7 @@
     <string name="settings_kernel_umount_summary">在核心為需要的應用程式解除掛載模組</string>
     <string name="settings_selinux_spoof">偽裝 SELinux 稽核</string>
     <string name="settings_selinux_spoof_summary">在 avc 稽核日誌中隱藏 ksu 域，避免應用程式看到 root 痕跡</string>
-    <string name="settings_fake_lock">隱藏 BL 解鎖狀態</string>
+    <string name="settings_fake_lock">一定程度上隱藏 BL 解鎖狀態</string>
     <string name="settings_fake_lock_summary">将设备伪装为 BL 未解锁状态，避免应用检测</string>
 
     <string name="settings_mount_hide">隱藏掛載記錄</string>
