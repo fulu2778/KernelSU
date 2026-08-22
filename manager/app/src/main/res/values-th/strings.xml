@@ -140,8 +140,8 @@
     <string name="settings_sucompat_summary">อนุญาตให้เข้าถึงสิทธิ์รูท ผ่านทาง /system/bin/su ในกระบวนการใหม่</string>
     <string name="settings_kernel_umount">Umount โมดูล (ระดับเคอร์เนล)</string>
     <string name="settings_kernel_umount_summary">Unmount โมดูลจากเคอร์เนลในโปรไฟล์แอป</string>
-    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
-    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
+    <string name="settings_selinux_spoof">Hide SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Prevent apps from detecting root through avc audit logs</string>
     <string name="settings_fake_lock">ซ่อนสถานะ Bootloader</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
