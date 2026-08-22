@@ -26,6 +26,7 @@
 
 #include "mount_id.h"
 #include "infra/symbol_resolver.h"
+#include "arch.h"
 #include "klog.h"
 
 #include <linux/cred.h>
@@ -97,18 +98,14 @@ static int clone_mnt_entry(struct kretprobe_instance *ri, struct pt_regs *regs)
     if (unlikely(!mount_id_active))
         return 1; /* 禁用: 不注册 ret, 零开销 */
 
-#ifdef __x86_64__
-    ctx->root = (struct dentry *)regs->si;
-#else
-    ctx->root = (struct dentry *)regs->regs[1];
-#endif
+    ctx->root = (struct dentry *)PT_REGS_PARM2(regs);
     return 0;
 }
 
 static int clone_mnt_ret(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     struct clone_mnt_ctx *ctx = (struct clone_mnt_ctx *)ri->data;
-    void *new_mnt = (void *)regs->regs[0];
+    void *new_mnt = (void *)PT_REGS_RC(regs);
     char *buf;
     const char *root_path;
 
@@ -143,11 +140,7 @@ static int vfs_create_mount_entry(struct kretprobe_instance *ri, struct pt_regs 
     if (unlikely(!mount_id_active))
         return 1; /* 禁用: 不注册 ret, 零开销 */
 
-#ifdef __x86_64__
-    fc = (struct fs_context *)regs->di;
-#else
-    fc = (struct fs_context *)regs->regs[0];
-#endif
+    fc = (struct fs_context *)PT_REGS_PARM1(regs);
     ctx->source = fc ? fc->source : NULL;
     return 0;
 }
@@ -161,7 +154,7 @@ static int vfs_create_mount_ret(struct kretprobe_instance *ri, struct pt_regs *r
     /* 非模块挂载或创建失败: 跳过 */
     if (!source || strncmp(source, MOUNT_ID_PREFIX, sizeof(MOUNT_ID_PREFIX) - 1) != 0)
         return 0;
-    mnt = (struct vfsmount *)regs->regs[0];
+    mnt = (struct vfsmount *)PT_REGS_RC(regs);
     if (!mnt || IS_ERR(mnt))
         return 0;
     reassign_sus_mnt_id((void *)((char *)mnt - MOUNT_OFF_MNT));

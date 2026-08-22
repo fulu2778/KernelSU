@@ -25,6 +25,7 @@
 
 #include "mount_hide.h"
 #include "mount_id.h"
+#include "arch.h"
 #include "policy/feature.h"
 #include "infra/symbol_resolver.h"
 #include "klog.h"
@@ -77,13 +78,8 @@ static int hide_entry(struct kretprobe_instance *ri, struct pt_regs *regs)
     if (uid_eq(current_uid(), GLOBAL_ROOT_UID))
         return 1;
 
-#ifdef __x86_64__
-    m = (struct seq_file *)regs->di;
-    mnt = (struct vfsmount *)regs->si;
-#else
-    m = (struct seq_file *)regs->regs[0];
-    mnt = (struct vfsmount *)regs->regs[1];
-#endif
+    m = (struct seq_file *)PT_REGS_PARM1(regs);
+    mnt = (struct vfsmount *)PT_REGS_PARM2(regs);
 
     ctx->m = m;
     ctx->count_before = m ? m->count : 0;
