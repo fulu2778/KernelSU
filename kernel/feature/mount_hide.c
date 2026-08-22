@@ -9,326 +9,122 @@
  * 的输出中。与 kernel_umount(真卸载) 互补：本功能保留挂载功能，
  * 仅在输出层对挂载条目做过滤。
  *
- * 机制: kprobe 挂在三个 show 回调入口，pre_handler 检查挂载根路径
- * (dentry_path_raw(mnt_root)) 是否命中 KSU 模块挂载前缀(默认为
- * "/adb/modules"，KSU 的模块挂载由用户空间以该路径绑定)，命中则将
- * 指令流重定向到 trampoline 直接返回 0 (seq_file 语义: 该条目不输出)。
- * 过滤对所有进程生效(包含 isolated process)。susfs 内核自带输出过滤，
- * 检测到 susfs_show_mountinfo 符号时自动让位，避免重复。
+ * 过滤判据: 只看 mnt_id —— 模块挂载由 mount_id 分配独立高位 id 空间
+ * (>= DEFAULT_KSU_MNT_ID), 系统挂载保持低 id。show 层对高 id 条目
+ * 过滤, 低 id 序列天然连续 (无挂载间隙), 且不会误伤任何系统挂载
+ * (路径无关, 与 susfs 的 SUS_MOUNT 过滤语义一致)。
  *
- * 行为由 KSU_FEATURE_MOUNT_HIDE 开关控制(默认开启)，可通过 ioctl/
- * Manager 切换。卸载 kernel (kernel_umount 或 rmmod kernelsu) 时由
- * ksu_mount_hide_exit 注销 kprobe 恢复。
+ * 实现: kretprobe 挂三个 show 回调。entry 记录 m->count 并判断当前
+ * 条目 id 是否高位; ret 时对高位条目把 m->count 回退到 entry 值——
+ * 该行内容被"抹掉", seq 迭代自动继续下一行。无指令跳转、无缓冲改写,
+ * arm64/x86_64 通用。
+ *
+ * 行为由 KSU_FEATURE_MOUNT_HIDE 开关控制(默认开启)。卸载 kernel 时
+ * 注销探针恢复。
  */
 
 #include "mount_hide.h"
+#include "mount_id.h"
 #include "policy/feature.h"
 #include "infra/symbol_resolver.h"
-#include "ksu.h"
 #include "klog.h"
 
 #include <linux/kernel.h>
 #include <linux/kprobes.h>
 #include <linux/module.h>
-#include <linux/percpu.h>
 #include <linux/seq_file.h>
-#include <linux/mount.h>
-#include <linux/namei.h>
-#include <linux/path.h>
-#include <linux/dcache.h>
 #include <linux/cred.h>
+#include <linux/mount.h>
 #include <linux/sched.h>
 #include <linux/string.h>
-#include <linux/workqueue.h>
 #include <asm/ptrace.h>
 
-#define MOUNT_HIDE_PREFIX "/adb/modules"
-#define MOUNT_HIDE_BUF_SIZE (PATH_MAX * 2)
+#define MOUNT_OFF_MNT 32
+#define MOUNT_OFF_MNT_ID 324 /* MIUI GKI 实测: struct mount+324 */
 
 static bool ksu_mount_hide_enabled __read_mostly = true;
 
-/* /data/adb/modules 目录 dentry 缓存: 判据0 的纯指针快路径。
- * LKM 在 ramdisk 阶段加载时 /data 尚未挂载, 由 delayed work 重试解析;
- * 持引用(dget)防释放, 若 /data 重挂导致 dentry 陈旧, 判据0 失配后
- * 仍由判据1/2 字符串兜底, 不产生误放行。 */
-static struct dentry *modules_dentry __read_mostly;
-static struct delayed_work modules_dentry_work;
-#define MODULES_DENTRY_PATH "/data/adb/modules"
+static struct kretprobe kr_mountinfo, kr_vfsmnt, kr_vfsstat;
 
-static void renumber_visible_mounts(void);
-
-static void modules_dentry_resolve(struct work_struct *w)
-{
-    struct path path;
-    static int attempts;
-
-    pr_info("mount_hide: dentry resolve work fired (attempt %d)\n", attempts + 1);
-    {
-        const struct cred *saved = NULL;
-        int kret;
-
-        /* kworker 的 SELinux 域无 /data/adb search 权限 (-EACCES),
-         * 用 ksu 域全权 creds 包裹查找 */
-        if (ksu_cred)
-            saved = override_creds(ksu_cred);
-        kret = kern_path(MODULES_DENTRY_PATH, LOOKUP_FOLLOW, &path);
-        if (saved)
-            revert_creds(saved);
-
-        pr_info("mount_hide: kern_path -> %d\n", kret);
-        if (kret != 0)
-            goto retry;
-        {
-            struct dentry *old = xchg(&modules_dentry, path.dentry);
-            if (old)
-                dput(old);
-            mntput(path.mnt); /* 只释放 mnt 引用, dentry 引用移交缓存 */
-        }
-        pr_info("mount_hide: fast path armed (%s)\n", MODULES_DENTRY_PATH);
-        renumber_visible_mounts(); /* 模块挂载已就位, 可见条目 ID 连续化 */
-        return;
-    }
-retry:
-    if (++attempts < 12) /* 每 5s 重试, 1 分钟后放弃 */
-        schedule_delayed_work(&modules_dentry_work, msecs_to_jiffies(5000));
-}
-
-/* pre_handler 运行于原子上下文(本 CPU 关抢占)，per-cpu 双缓冲替代
- * 每条目 16KB 的 GFP_ATOMIC 分配；show_* 入口不可能同 CPU 嵌套。
- * 注意: 不能用静态 DEFINE_PER_CPU——模块 percpu 段预留区
- * (PERCPU_MODULE_RESERVE) 仅 8KB, 16KB 缓冲会令 insmod 直接
- * -ENOMEM 失败; 改为 init 时 __alloc_percpu 走动态 percpu 池。 */
-static char __percpu *mount_hide_buf; /* 2 * MOUNT_HIDE_BUF_SIZE */
-
-static struct kprobe kp_mountinfo, kp_vfsmnt, kp_vfsstat;
-
-/* trampoline: 命中挂载后跳入，直接返回 0 (seq_file: 当前条目不输出) */
-static int mount_hide_skip_show(struct seq_file *m, struct vfsmount *vfsmnt)
-{
-    return 0;
-}
-
-/* 系统分区: 挂载点(而非 root) 命中这些带尾斜杠前缀，天然排除分区根本身
- * (如 /system 不命中 /system/)。模块挂载点必然落在只读系统分区内的文件上,
- * 这是无法伪装的结构性特征, 与 mountsource/config 无关。 */
-static const char *const sys_partitions[] = {
-    "/system/", "/product/", "/vendor/", "/system_ext/", "/odm/", "/vendor_dlkm/", "/system_dlkm/",
+struct hide_ctx {
+    struct seq_file *m;
+    unsigned long count_before;
 };
 
-/* 判定核心: 不含 root 放行 (重编号扫描需要无差别过滤) */
-static bool mount_is_sus_raw(struct vfsmount *mnt)
-{
-    char *buf;
-    const char *path, *root;
-    struct dentry *cached;
-    bool hit = false;
-    int i;
-
-    if (unlikely(!mnt || !mnt->mnt_root || !ksu_mount_hide_enabled || !mount_hide_buf))
-        return false;
-
-    /* 判据0 (快路径, 纯指针): bind mount 的 mnt_root 即源文件 dentry,
-	 * 落在 /data/adb/modules 树内则必为模块挂载, 无需任何字符串运算。
-	 * dentry 由 delayed work 异步解析(LKM 加载时 /data 尚未挂载),
-	 * 解析成功前该判据静默跳过, 由判据1/2 兜底。 */
-    cached = READ_ONCE(modules_dentry);
-    if (cached) {
-        bool sub;
-        rcu_read_lock();
-        sub = is_subdir(mnt->mnt_root, cached);
-        rcu_read_unlock();
-        if (sub)
-            return true;
-    }
-
-    buf = get_cpu_ptr(mount_hide_buf);
-
-    /* 判据1 (结构性): d_path 沿挂载边界返回挂载点全路径。
-	 * 系统自身挂载点全是分区根(/system /product /vendor...), 不命中;
-	 * 任何覆盖系统文件的模块挂载(bind / overlay / 任意 mountsource)命中。 */
-    path = d_path(&(struct path){ .mnt = mnt, .dentry = mnt->mnt_root }, buf, MOUNT_HIDE_BUF_SIZE);
-    if (likely(!IS_ERR(path))) {
-        for (i = 0; i < ARRAY_SIZE(sys_partitions); i++) {
-            if (strncmp(path, sys_partitions[i], strlen(sys_partitions[i])) == 0) {
-                hit = true;
-                goto out;
-            }
-        }
-    }
-
-    /* 判据2 (兜底): root 字段(dentry_path_raw 不跨挂载边界)命中
-	 * KSU 模块挂载前缀 /adb/modules, 覆盖传统 bind staging 与
-	 * /apex 内文件覆盖(如 zygisk dex2oat) */
-    root = dentry_path_raw(mnt->mnt_root, buf + MOUNT_HIDE_BUF_SIZE, MOUNT_HIDE_BUF_SIZE);
-    if (likely(!IS_ERR(root)) && strncmp(root, MOUNT_HIDE_PREFIX, sizeof(MOUNT_HIDE_PREFIX) - 1) == 0)
-        hit = true;
-
-out:
-    put_cpu_ptr(mount_hide_buf);
-    return hit;
-}
-
-static bool mount_root_is_sus_mount(struct vfsmount *mnt)
-{
-    /* root 读者(自己人)直接放行: 调试可见真实挂载, 也省掉其全部开销 */
-    if (uid_eq(current_uid(), GLOBAL_ROOT_UID))
-        return false;
-    return mount_is_sus_raw(mnt);
-}
-
-/* ---- 挂载 ID 连续性 (反"挂载间隙"检测) ----
- * 检测方解析 /proc/<pid>/mountinfo, 发现 mnt_id (或 shared:组ID) 跳号即判定
- * 存在被隐藏的挂载。开机后内核自读一遍 mountinfo: pre_handler 按无差别
- * 过滤逐条记录可见挂载, 然后按扫描顺序把可见条目重编号为连续的
- * 1..N (mnt_id) 与 1..M (mnt_group_id), 输出不再有空洞。
- * struct mount 偏移基于 6.6 arm64 + CONFIG_RANDSTRUCT_NONE 手工推导,
- * 写入带数值护栏, 失配即放弃 (fail-safe)。 */
-#define MOUNT_OFF_MNT 32
-#define MOUNT_OFF_MNT_ID 288
-#define MOUNT_OFF_MNT_GROUP_ID 292
-#define MOUNT_ID_SANITY_MAX (1 << 20)
-
-static bool renumber_active;
-static struct vfsmount *renumber_seen[2048];
-static size_t renumber_count;
-
-static int mount_id_of(struct vfsmount *mnt)
+static int mnt_id_of(struct vfsmount *mnt)
 {
     return *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_ID);
 }
 
-static void set_mount_id_of(struct vfsmount *mnt, int id)
+/* 高位 id = 模块挂载 (mount_id 分配), 过滤之 */
+static bool is_sus_mount_id(struct vfsmount *mnt)
 {
-    *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_ID) = id;
+    int id = mnt_id_of(mnt);
+
+    return id >= DEFAULT_KSU_MNT_ID;
 }
 
-static int group_id_of(struct vfsmount *mnt)
+static int hide_entry(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    return *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_GROUP_ID);
-}
-
-static void set_group_id_of(struct vfsmount *mnt, int id)
-{
-    *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_GROUP_ID) = id;
-}
-
-static void renumber_visible_mounts(void)
-{
-    struct file *fp;
-    char *buf;
-    loff_t pos = 0;
-    size_t i;
-    int next_id = 1;
-    int old_gid[128], new_gid[128];
-    int gid_n = 0;
-    bool ok = true;
-
-    renumber_count = 0;
-    WRITE_ONCE(renumber_active, true);
-    fp = filp_open("/proc/self/mountinfo", O_RDONLY, 0);
-    if (IS_ERR(fp)) {
-        WRITE_ONCE(renumber_active, false);
-        pr_warn("mount_hide: renumber scan open failed\n");
-        return;
-    }
-    buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
-    if (!buf) {
-        filp_close(fp, 0);
-        WRITE_ONCE(renumber_active, false);
-        return;
-    }
-    while (kernel_read(fp, buf, PAGE_SIZE, &pos) > 0)
-        ;
-    kfree(buf);
-    filp_close(fp, 0);
-    WRITE_ONCE(renumber_active, false);
-
-    if (!renumber_count)
-        return;
-
-    for (i = 0; i < renumber_count; i++) {
-        int id = mount_id_of(renumber_seen[i]);
-
-        if (id <= 0 || id > MOUNT_ID_SANITY_MAX) {
-            ok = false; /* 偏移失配: 放弃, 不破坏现场 */
-            break;
-        }
-        set_mount_id_of(renumber_seen[i], next_id++);
-    }
-
-    if (ok) {
-        for (i = 0; i < renumber_count; i++) {
-            int g = group_id_of(renumber_seen[i]);
-            int j;
-
-            if (g <= 0 || g > MOUNT_ID_SANITY_MAX)
-                continue;
-            for (j = 0; j < gid_n; j++)
-                if (old_gid[j] == g)
-                    break;
-            if (j == gid_n) {
-                if (gid_n >= 128)
-                    return; /* 组过多: id 已重编号, 组保持原值 */
-                old_gid[gid_n] = g;
-                new_gid[gid_n] = gid_n + 1;
-                gid_n++;
-            }
-            set_group_id_of(renumber_seen[i], new_gid[j]);
-        }
-        pr_info("mount_hide: renumbered %zu mounts (ids 1..%d, %d groups)\n", renumber_count, next_id - 1, gid_n);
-    } else {
-        pr_warn("mount_hide: mount id sanity check failed, renumber aborted\n");
-    }
-}
-
-/* kprobe pre_handler: x86-64: rdi=seq_file*, rsi=vfsmnt* */
-static int mount_hide_pre(struct kprobe *p, struct pt_regs *regs)
-{
+    struct hide_ctx *ctx = (struct hide_ctx *)ri->data;
+    struct seq_file *m;
     struct vfsmount *mnt;
-    bool redirect;
+
+    if (unlikely(!ksu_mount_hide_enabled))
+        return 1; /* 禁用: 不注册 ret, 零开销 */
+
+    /* root 读者(自己人)不过滤: 调试可见真实挂载 */
+    if (uid_eq(current_uid(), GLOBAL_ROOT_UID))
+        return 1;
 
 #ifdef __x86_64__
+    m = (struct seq_file *)regs->di;
     mnt = (struct vfsmount *)regs->si;
 #else
+    m = (struct seq_file *)regs->regs[0];
     mnt = (struct vfsmount *)regs->regs[1];
 #endif
 
-    if (unlikely(READ_ONCE(renumber_active))) {
-        /* 重编号扫描: 按无差别过滤记录可见挂载 (输出丢弃) */
-        if (!mount_is_sus_raw(mnt) && renumber_count < ARRAY_SIZE(renumber_seen))
-            renumber_seen[renumber_count++] = mnt;
-        return 0;
-    }
+    ctx->m = m;
+    ctx->count_before = m ? m->count : 0;
+    if (!m || !mnt || !is_sus_mount_id(mnt))
+        return 1; /* 可见条目: 跳过 ret, 零开销 */
 
-    redirect = mount_root_is_sus_mount(mnt);
-    if (redirect) {
-#ifdef __x86_64__
-        regs->ip = (unsigned long)mount_hide_skip_show;
-#else
-        regs->pc = (unsigned long)mount_hide_skip_show;
-#endif
-        return 1; /* 跳过原指令单步，直接执行 trampoline */
+    /* 模块挂载: 注册 ret, 输出后抹掉本行 */
+    return 0;
+}
+
+static int hide_ret(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+    struct hide_ctx *ctx = (struct hide_ctx *)ri->data;
+    struct seq_file *m = ctx->m;
+
+    /* 回退 count: 本行内容从输出中消失, seq 迭代继续下一行 */
+    if (m && m->count >= ctx->count_before)
+        m->count = ctx->count_before;
+    return 0;
+}
+
+static int kr_setup(struct kretprobe *kr, const char *name)
+{
+    kr->kp.symbol_name = name;
+    kr->entry_handler = hide_entry;
+    kr->handler = hide_ret;
+    kr->data_size = sizeof(struct hide_ctx);
+    kr->maxactive = 64;
+    if (register_kretprobe(kr)) {
+        pr_warn("mount_hide: register %s failed\n", name);
+        kr->kp.symbol_name = NULL;
+        return -1;
     }
     return 0;
 }
 
-static int mount_hide_kp_setup(struct kprobe *kp, const char *name)
+static void kr_teardown(struct kretprobe *kr)
 {
-    int ret;
-
-    kp->symbol_name = name;
-    kp->pre_handler = mount_hide_pre;
-    ret = register_kprobe(kp);
-    if (ret)
-        kp->symbol_name = NULL; /* 未注册成功, exit 时不可 unregister */
-    return ret;
-}
-
-static void mount_hide_kp_teardown(struct kprobe *kp)
-{
-    if (kp->symbol_name) {
-        unregister_kprobe(kp);
-        kp->symbol_name = NULL;
+    if (kr->kp.symbol_name) {
+        unregister_kretprobe(kr);
+        kr->kp.symbol_name = NULL;
     }
 }
 
@@ -342,10 +138,6 @@ static int ksu_mount_hide_feature_set(u64 value)
 {
     ksu_mount_hide_enabled = value != 0;
     pr_info("mount_hide: set to %d\n", ksu_mount_hide_enabled);
-    if (value) {
-        /* 重新启用即重扫重编号 (进程上下文, 同一 work 顺带刷新 dentry 缓存) */
-        schedule_delayed_work(&modules_dentry_work, msecs_to_jiffies(1000));
-    }
     return 0;
 }
 
@@ -358,68 +150,36 @@ static const struct ksu_feature_handler mount_hide_handler = {
 
 int __init ksu_mount_hide_init(void)
 {
-    int ret;
-
-    /* 内核已集成 susfs 输出过滤时让位，避免重复 hook */
+    /* 内核已集成 susfs 输出过滤时让位, 避免重复 hook */
     if (find_kernel_symbol_exact("susfs_show_mountinfo")) {
         pr_info("mount_hide: susfs already present, skip\n");
         return 0;
     }
 
-    /* 双缓冲必须先于 kprobe 注册就绪: 动态 percpu 池分配, 见变量声明处注释 */
-    mount_hide_buf = __alloc_percpu(2 * MOUNT_HIDE_BUF_SIZE, __alignof__(u64));
-    if (!mount_hide_buf) {
-        pr_warn("mount_hide: percpu buffer alloc failed, feature degraded\n");
+    if (kr_setup(&kr_mountinfo, "show_mountinfo"))
         return 0;
-    }
-
-    ret = mount_hide_kp_setup(&kp_mountinfo, "show_mountinfo");
-    if (ret) {
-        pr_warn("mount_hide: register show_mountinfo failed: %d\n", ret);
-        /* 非 fatal: 特性降级，不影响 KSU 主体 */
-        goto err_percpu;
-    }
-    ret = mount_hide_kp_setup(&kp_vfsmnt, "show_vfsmnt");
-    if (ret) {
-        pr_warn("mount_hide: register show_vfsmnt failed: %d\n", ret);
+    if (kr_setup(&kr_vfsmnt, "show_vfsmnt"))
         goto err_vfsmnt;
-    }
-    ret = mount_hide_kp_setup(&kp_vfsstat, "show_vfsstat");
-    if (ret) {
-        pr_warn("mount_hide: register show_vfsstat failed: %d\n", ret);
+    if (kr_setup(&kr_vfsstat, "show_vfsstat"))
         goto err_vfsstat;
-    }
 
     ksu_register_feature_handler(&mount_hide_handler);
 
-    INIT_DELAYED_WORK(&modules_dentry_work, modules_dentry_resolve);
-    schedule_delayed_work(&modules_dentry_work, msecs_to_jiffies(5000));
-
-    pr_info("mount_hide: active (%s)\n", MOUNT_HIDE_PREFIX);
+    pr_info("mount_hide: active (filter ids >= 0x%x)\n", DEFAULT_KSU_MNT_ID);
     return 0;
 
-err_vfsstat:
-    mount_hide_kp_teardown(&kp_vfsmnt);
 err_vfsmnt:
-    mount_hide_kp_teardown(&kp_mountinfo);
-err_percpu:
-    free_percpu(mount_hide_buf);
-    mount_hide_buf = NULL;
+    kr_teardown(&kr_vfsmnt);
+err_vfsstat:
+    kr_teardown(&kr_mountinfo);
     return 0;
 }
 
 void __exit ksu_mount_hide_exit(void)
 {
     ksu_unregister_feature_handler(KSU_FEATURE_MOUNT_HIDE);
-    cancel_delayed_work_sync(&modules_dentry_work);
-    if (modules_dentry)
-        dput(modules_dentry);
-    mount_hide_kp_teardown(&kp_vfsstat);
-    mount_hide_kp_teardown(&kp_vfsmnt);
-    mount_hide_kp_teardown(&kp_mountinfo);
-    if (mount_hide_buf) {
-        free_percpu(mount_hide_buf);
-        mount_hide_buf = NULL;
-    }
+    kr_teardown(&kr_vfsstat);
+    kr_teardown(&kr_vfsmnt);
+    kr_teardown(&kr_mountinfo);
     pr_info("mount_hide: deactivated\n");
 }

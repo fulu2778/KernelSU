@@ -26,6 +26,7 @@
 #include "feature/adb_root.h"
 #include "feature/selinux_hide.h"
 #include "feature/mount_hide.h"
+#include "feature/mount_id.h"
 #include "feature/bootconfig_hide.h"
 #include "infra/symbol_resolver.h"
 
@@ -137,6 +138,7 @@ int __init kernelsu_init(void)
     ksu_lsm_hook_init();
     ksu_selinux_hide_init();
     ksu_mount_hide_init();
+    ksu_mount_id_init();
     ksu_bootconfig_hide_init();
 
     ksu_supercalls_init();
@@ -212,6 +214,7 @@ void __exit kernelsu_exit(void)
     ksu_allowlist_exit();
 
     ksu_mount_hide_exit();
+    ksu_mount_id_exit();
     ksu_bootconfig_hide_exit();
     ksu_selinux_hide_exit();
     ksu_lsm_hook_exit();
