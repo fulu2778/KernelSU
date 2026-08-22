@@ -23,6 +23,7 @@ pub enum FeatureId {
     SelinuxHide = 4,
     MountHide = 5,
     BootconfigHide = 6,
+    SelinuxSpoof = 7,
 }
 
 impl FeatureId {
@@ -35,6 +36,7 @@ impl FeatureId {
             4 => Some(Self::SelinuxHide),
             5 => Some(Self::MountHide),
             6 => Some(Self::BootconfigHide),
+            7 => Some(Self::SelinuxSpoof),
             _ => None,
         }
     }
@@ -48,6 +50,7 @@ impl FeatureId {
             Self::SelinuxHide => "selinux_hide",
             Self::MountHide => "mount_hide",
             Self::BootconfigHide => "bootconfig_hide",
+            Self::SelinuxSpoof => "selinux_spoof",
         }
     }
 
@@ -72,6 +75,9 @@ impl FeatureId {
             Self::BootconfigHide => {
                 "Bootconfig Hide - spoof verified-boot state in /proc/bootconfig for non-root readers"
             }
+            Self::SelinuxSpoof => {
+                "Selinux Spoof - deny ksu-domain avd lookups and mask ksu in avc audit logs"
+            }
         }
     }
 }
@@ -85,6 +91,7 @@ fn parse_feature_id(name: &str) -> Result<FeatureId> {
         "selinux_hide" | "4" => Ok(FeatureId::SelinuxHide),
         "mount_hide" | "5" => Ok(FeatureId::MountHide),
         "bootconfig_hide" | "6" => Ok(FeatureId::BootconfigHide),
+        "selinux_spoof" | "7" => Ok(FeatureId::SelinuxSpoof),
         _ => bail!("Unknown feature: {name}"),
     }
 }
