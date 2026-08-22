@@ -148,6 +148,9 @@
     <string name="settings_sucompat_summary">Omogućava aplikacijama kojima je dodijeljeno dopuštenje Superuser u Profilu aplikacije da dobiju superuser shell izvršavanjem /system/bin/su; učinkovito samo za nove procese.</string>
     <string name="settings_kernel_umount">Kernel umount</string>
     <string name="settings_kernel_umount_summary">Ponašanje umount na razini kernela koje kontrolira KernelSU</string>
+    <string name="settings_mount_hide">Sakrij mount</string>
+    <string name="settings_mount_hide_summary">Sakriva mount module iz /proc izlaza, zadržavajući funkcionalnost</string>
+
     <string name="undo">Poništi</string>
     <string name="module_undo_uninstall_success">Deinstalacija %s uspješno otkazana</string>
     <string name="module_undo_uninstall_failed">Poništavanje deinstalacije nije uspjelo: %s</string>

@@ -63,6 +63,8 @@ class SettingsViewModel(
             val isSulogEnabled = repo.getSulogPersistValue() == 1L
             val adbRootStatus = repo.getAdbRootStatus()
             val isAdbRootEnabled = repo.getAdbRootPersistValue() == 1L
+            val mountHideStatus = repo.getMountHideStatus()
+            val isMountHideEnabled = repo.isMountHideEnabled()
             val isDefaultUmountModules = repo.isDefaultUmountModules()
             val uiMode = repo.uiMode
             val autoJailbreak = repo.autoJailbreak
@@ -97,6 +99,8 @@ class SettingsViewModel(
                     isSelinuxHideEnabled = isSelinuxHideEnabled,
                     sulogStatus = sulogStatus,
                     isSulogEnabled = isSulogEnabled,
+                    mountHideStatus = mountHideStatus,
+                    isMountHideEnabled = isMountHideEnabled,
                     isDefaultUmountModules = isDefaultUmountModules,
                     isLkmMode = isLkmMode,
                     autoJailbreak = autoJailbreak,
@@ -259,6 +263,15 @@ class SettingsViewModel(
             if (repo.setKernelUmountEnabled(enabled)) {
                 repo.execKsudFeatureSave()
                 _uiState.update { it.copy(isKernelUmountEnabled = enabled) }
+            }
+        }
+    }
+
+    fun setMountHideEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (repo.setMountHideEnabled(enabled) == 0) {
+                repo.execKsudFeatureSave()
+                _uiState.update { it.copy(isMountHideEnabled = enabled) }
             }
         }
     }

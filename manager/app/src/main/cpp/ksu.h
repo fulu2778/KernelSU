@@ -49,7 +49,12 @@ bool is_kernel_umount_enabled();
 // SELinux hide
 int set_selinux_hide_enabled(bool enabled);
 
+// Mount hide
+int set_mount_hide_enabled(bool enabled);
+
 bool is_selinux_hide_enabled();
+
+bool is_mount_hide_enabled();
 
 bool get_allow_list(struct ksu_new_get_allow_list_cmd *);
 

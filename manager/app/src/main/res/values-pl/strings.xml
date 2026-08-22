@@ -146,6 +146,9 @@
     <string name="settings_sucompat_summary">Pozwala aplikacjom z uprawnieniami Superużytkownika w profilu aplikacji uzyskać shell superużytkownika przez wykonanie /system/bin/su; skuteczne tylko dla nowych procesów.</string>
     <string name="settings_kernel_umount">Odmontowanie jądra</string>
     <string name="settings_kernel_umount_summary">Zachowanie odmontowania na poziomie jądra kontrolowane przez KernelSU</string>
+    <string name="settings_mount_hide">Ukryj mounty</string>
+    <string name="settings_mount_hide_summary">Ukrywa mounty modułów w danych wyjściowych /proc, zachowując funkcjonalność</string>
+
     <string name="app_profile_affects_following_apps">Wpływa na następujące aplikacje</string>
     <string name="install_select_partition">Wybierz partycję</string>
     <string name="group_contains_apps">Zawiera %d aplikacji</string>

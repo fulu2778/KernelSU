@@ -139,6 +139,9 @@
     <string name="settings_sucompat_summary">新規プロセスで /system/bin/su 経由での root アクセスを許可します。</string>
     <string name="settings_kernel_umount">モジュールのアンマウント (カーネルレベル)</string>
     <string name="settings_kernel_umount_summary">アプリプロファイルに基づいて、カーネルからモジュールをアンマウントします。</string>
+    <string name="settings_mount_hide">マウントを隠す</string>
+    <string name="settings_mount_hide_summary">/proc 出力からモジュールマウントを隠し、モジュール機能を維持します</string>
+
     <string name="processing">処理中…</string>
     <string name="refresh_pulling">下に引いて更新</string>
     <string name="refresh_release">リリースして更新</string>

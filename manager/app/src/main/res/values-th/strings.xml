@@ -140,6 +140,9 @@
     <string name="settings_sucompat_summary">อนุญาตให้เข้าถึงสิทธิ์รูท ผ่านทาง /system/bin/su ในกระบวนการใหม่</string>
     <string name="settings_kernel_umount">Umount โมดูล (ระดับเคอร์เนล)</string>
     <string name="settings_kernel_umount_summary">Unmount โมดูลจากเคอร์เนลในโปรไฟล์แอป</string>
+    <string name="settings_mount_hide">ซ่อน mount</string>
+    <string name="settings_mount_hide_summary">ซ่อน mount ของโมดูลจากเอาต์พุต /proc คงฟังก์ชันของโมดูล</string>
+
     <string name="processing">กำลังประมวลผล…</string>
     <string name="refresh_pulling">ดึงลงเพื่อรีเฟรช</string>
     <string name="refresh_release">ปล่อยเพื่อรีเฟรช</string>

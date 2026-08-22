@@ -138,6 +138,9 @@
     <string name="settings_sucompat_summary">Tillader apps med Superuser-tilladelse i App Profile at få superuser shell ved at udføre /system/bin/su; gælder kun for nye processer.</string>
     <string name="settings_kernel_umount">Kernel umount</string>
     <string name="settings_kernel_umount_summary">Kernel-niveau umount adfærd kontrolleret af KernelSU</string>
+    <string name="settings_mount_hide">Skjul mounts</string>
+    <string name="settings_mount_hide_summary">Skjuler modul-mounts fra /proc-udskrift, bevarer funktionalitet</string>
+
     <string name="processing">Behandler…</string>
     <string name="refresh_pulling">Træk ned for at opdatere</string>
     <string name="refresh_release">Slip for at opdatere</string>

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Adb
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ContactPage
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.ElectricalServices
@@ -280,6 +281,23 @@ fun SettingPagerMaterial(
                                 checked = uiState.isDefaultUmountModules,
                                 onCheckedChange = actions.onSetDefaultUmountModules
                             )
+                        },
+                        {
+                            if (uiState.isDefaultUmountModules) {
+                                val mountHideSummary = when (uiState.mountHideStatus) {
+                                    "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                    "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                    else -> stringResource(id = R.string.settings_mount_hide_summary)
+                                }
+                                SegmentedSwitchItem(
+                                    icon = Icons.Filled.Lock,
+                                    title = stringResource(id = R.string.settings_mount_hide),
+                                    summary = mountHideSummary,
+                                    enabled = uiState.mountHideStatus == "supported",
+                                    checked = uiState.isMountHideEnabled,
+                                    onCheckedChange = actions.onSetMountHideEnabled
+                                )
+                            }
                         },
                         {
                             SegmentedSwitchItem(

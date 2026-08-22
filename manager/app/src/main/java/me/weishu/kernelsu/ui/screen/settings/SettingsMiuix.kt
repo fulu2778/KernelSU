@@ -20,6 +20,7 @@ import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.ContactPage
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.DeveloperMode
 import androidx.compose.material.icons.rounded.ElectricalServices
 import androidx.compose.material.icons.rounded.Fence
@@ -354,6 +355,29 @@ fun SettingPagerMiuix(
                                 checked = uiState.isDefaultUmountModules,
                                 onCheckedChange = actions.onSetDefaultUmountModules
                             )
+
+                            if (uiState.isDefaultUmountModules) {
+                                val mountHideSummary = when (uiState.mountHideStatus) {
+                                    "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                    "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                    else -> stringResource(id = R.string.settings_mount_hide_summary)
+                                }
+                                SwitchPreference(
+                                    title = stringResource(id = R.string.settings_mount_hide),
+                                    summary = mountHideSummary,
+                                    startAction = {
+                                        Icon(
+                                            Icons.Rounded.Lock,
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            contentDescription = stringResource(id = R.string.settings_mount_hide),
+                                            tint = colorScheme.onBackground
+                                        )
+                                    },
+                                    enabled = uiState.mountHideStatus == "supported",
+                                    checked = uiState.isMountHideEnabled,
+                                    onCheckedChange = actions.onSetMountHideEnabled
+                                )
+                            }
 
                             SwitchPreference(
                                 title = stringResource(id = R.string.enable_web_debugging),

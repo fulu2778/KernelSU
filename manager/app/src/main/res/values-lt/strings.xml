@@ -80,6 +80,9 @@
     <string name="settings_sucompat_summary">Nukreipti /system/bin/su į ksud programoms, kurioms suteiktas Superuser leidimas programos profilyje; veiksminga tik naujiems procesams.</string>
     <string name="settings_kernel_umount">Branduolio atjungimas</string>
     <string name="settings_kernel_umount_summary">Branduolio lygio atjungimo elgsena, valdoma KernelSU</string>
+    <string name="settings_mount_hide">Paslėpti mountus</string>
+    <string name="settings_mount_hide_summary">Paslėpia modulių mount žurnalą iš /proc išvesties, išlaikant funkcionalumą</string>
+
     <string name="profile_flags_desc_no_new_privs">Neleidžia toliau didinti privilegijų per KernelSU šio root profilio kontekste.</string>
     <string name="install_force_backup">Kurti atsarginę kopiją kaip gamyklinį atvaizdą</string>
     <string name="install_force_backup_summary">Įsitikinkite, kad pasirinktas boot atvaizdas yra gamyklinis atvaizdas</string>

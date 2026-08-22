@@ -131,6 +131,9 @@ Csatlakozzon a %2$s csatornánkhoz</string>
     <string name="settings_sucompat_summary">Lehetővé teszi az App Profile-ban Superuser engedéllyel rendelkező alkalmazások számára, hogy superuser shell-t kapjanak a /system/bin/su végrehajtásával; csak új folyamatoknál hatékony.</string>
     <string name="settings_kernel_umount">Kernel leválasztása</string>
     <string name="settings_kernel_umount_summary">KernelSU által vezérelt kernel szintű leválasztási viselkedés</string>
+    <string name="settings_mount_hide">Mountok elrejtése</string>
+    <string name="settings_mount_hide_summary">Elrejti a modul mountokat a /proc kimenetből, megtartva a funkciót</string>
+
     <string name="profile_flags_desc_no_new_privs">Megakadályozza a jogosultságok további kiterjesztését a KernelSU-n keresztül ezen root profil kontextusán belül.</string>
     <string name="install_force_backup">Biztonsági mentés gyári képként</string>
     <string name="install_force_backup_summary">Kérjük, győződj meg róla, hogy a kiválasztott boot lemezkép a gyári lemezkép</string>

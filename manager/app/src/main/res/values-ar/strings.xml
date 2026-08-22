@@ -137,6 +137,9 @@
     <string name="settings_sucompat_summary">يسمح للتطبيقات التي تم منحها صلاحيات Superuser في ملف تعريف التطبيق بالحصول على shell superuser من خلال تنفيذ /system/bin/su؛ فعال فقط للعمليات الجديدة.</string>
     <string name="settings_kernel_umount">إلغاء تحميل النواة</string>
     <string name="settings_kernel_umount_summary">سلوك إلغاء تحميل مستوى النواة الذي يسيطر عليه KernelSU</string>
+    <string name="settings_mount_hide">إخفاء التحميلات</string>
+    <string name="settings_mount_hide_summary">يخفي تحميلات الوحدات من مخرجات /proc مع الحفاظ على وظائفها</string>
+
     <string name="profile_flags_desc_no_new_privs">يمنع المزيد من تصعيد الصلاحيات عبر KernelSU من داخل سياق ملف تعريف الروت هذا.</string>
     <string name="install_force_backup">نسخ احتياطي كصورة أصلية</string>
     <string name="install_force_backup_summary">يرجى التأكد من أن صورة boot التي اخترتها هي الصورة الأصلية</string>
