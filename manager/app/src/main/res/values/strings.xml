@@ -194,8 +194,8 @@
     <string name="settings_sucompat_summary">Allow Root access via /system/bin/su, in new processes</string>
     <string name="settings_kernel_umount">Kernel umount</string>
     <string name="settings_kernel_umount_summary">Unmount modules from kernel in App Profile</string>
-    <string name="settings_mount_hide">Hide module mounts</string>
-    <string name="settings_mount_hide_summary">Hide module mounts at the kernel level; apps cannot detect them while modules keep working</string>
+    <string name="settings_mount_hide">Hide mount entries</string>
+    <string name="settings_mount_hide_summary">Unlike umount, nothing is detached: module mounts are only hidden from the mount list, keeping modules working for all apps</string>
     <string name="settings_selinux_hide">Hide SELinux modification</string>
     <string name="settings_selinux_hide_summary">Prevent applications from detecting SELinux modifications</string>
     <string name="settings_fake_lock">Hide unlock status</string>

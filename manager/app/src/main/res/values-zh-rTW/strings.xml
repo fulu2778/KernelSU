@@ -156,8 +156,8 @@
     <string name="settings_fake_lock">隱藏 BL 解鎖狀態</string>
     <string name="settings_fake_lock_summary">將裝置偽裝為 BL 未解鎖狀態，避免應用程式偵測；重啟後自動生效</string>
 
-    <string name="settings_mount_hide">隱藏模組掛載</string>
-    <string name="settings_mount_hide_summary">在核心層面隱藏模組的掛載記錄，應用程式無法偵測，模組功能不受影響</string>
+    <string name="settings_mount_hide">隱藏掛載記錄</string>
+    <string name="settings_mount_hide_summary">不卸載模組，僅將模組掛載從掛載列表中隱藏，全域生效，模組功能完整保留</string>
 
     <string name="module_shortcut_title">建立捷徑</string>
     <string name="module_shortcut_name_label">捷徑名稱</string>

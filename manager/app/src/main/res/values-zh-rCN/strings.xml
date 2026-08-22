@@ -174,8 +174,8 @@
     <string name="settings_sucompat_summary">允许通过 /system/bin/su 获取 Root 权限</string>
     <string name="settings_kernel_umount">卸载模块（内核级）</string>
     <string name="settings_kernel_umount_summary">在内核给需要的应用卸载模块</string>
-    <string name="settings_mount_hide">隐藏模块挂载</string>
-    <string name="settings_mount_hide_summary">在内核层面隐藏模块的挂载记录，应用无法检测，模块功能不受影响</string>
+    <string name="settings_mount_hide">隐藏挂载记录</string>
+    <string name="settings_mount_hide_summary">不卸载模块，仅将模块挂载从挂载列表中隐藏，全局生效，模块功能完整保留</string>
 
     <string name="module_install_prompt_with_name">将安装以下模块：%1$s</string>
     <string name="confirm">确认</string>
