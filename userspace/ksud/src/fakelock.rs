@@ -65,7 +65,7 @@ const FAKE_PROPS: &[(&str, &str)] = &[
 /// bootmode 伪装 (FolkPatch patch_boot_keys)。
 const BOOT_KEYS: &[&str] = &["ro.bootmode", "ro.boot.bootmode", "vendor.boot.bootmode"];
 
-fn make_rp() -> ResetProp {
+const fn make_rp() -> ResetProp {
     ResetProp {
         skip_svc: true,
         persistent: false,

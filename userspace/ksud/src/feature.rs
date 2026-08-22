@@ -89,6 +89,8 @@ fn parse_feature_id(name: &str) -> Result<FeatureId> {
     }
 }
 
+// fakelock 模块需要跨模块调用; feature 模块本身保持私有
+#[allow(clippy::redundant_pub_crate)]
 pub(crate) fn set_kernel_feature(feature_id: FeatureId, value: u64) -> Result<()> {
     crate::ksucalls::set_feature(feature_id as u32, value)
         .with_context(|| format!("Failed to set feature {} to {value}", feature_id.name()))?;
