@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * ksud fakelock: 伪装 BL 锁状态 (仿 FolkPatch fpd -hide 的守护进程集成方式)
+ * ksud fakelock: 伪装 BL 锁状态 (参照 FolkPatch fpd prop_patch 的守护进程集成)
  *
  * 通过 ksud 内置的 resetprop API 在进程内完成属性伪装, 不依赖外部
  * 脚本或 resetprop 二进制。开关状态持久化于 /data/adb/ksu/.fakelock_enabled,
@@ -8,9 +8,12 @@
  * 内核侧 /proc/bootconfig 伪装 (KSU_FEATURE_BOOTCONFIG_HIDE) 与属性
  * 伪装同开同关, 保证 getprop 与 bootconfig 交叉比对永远一致。
  *
- * 属性表原则: 只修改设备上已存在的属性, 绝不创建——在错误的机型上出现
- * 本不该存在的属性本身就是指纹; 不伪造不指示锁状态的值 (avb_version/
- * vbmeta.size 等全机型存在, 但工具硬编码伪值是已知指纹)。
+ * 与 FolkPatch fpd/src/prop_patch.rs 保持逐条一致的语义 (该实现已验证
+ * 不触发属性区结构检测):
+ * - 只修改设备上已存在的属性, 绝不创建
+ * - 空值条目设为空串而非删除——删除会在属性区留下空洞, 正是
+ *   "Property Modified" 类检测的靶点
+ * - bootmode 含 recovery 时改写为 unknown
  */
 
 use anyhow::{Context, Result};
@@ -26,7 +29,8 @@ use prop_rs_android::sys_prop;
 
 const FLAG_PATH: &str = concatcp!(defs::WORKING_DIR, ".fakelock_enabled");
 
-/// (属性, 出厂锁定值)。只对设备上已存在的属性生效。
+/// (属性, 伪装值)。值与 FolkPatch fpd PATCH_LIST 逐条一致;
+/// 空串 = 设为空值 (不是删除)。
 const FAKE_PROPS: &[(&str, &str)] = &[
     ("ro.boot.vbmeta.device_state", "locked"),
     ("ro.boot.verifiedbootstate", "green"),
@@ -34,6 +38,10 @@ const FAKE_PROPS: &[(&str, &str)] = &[
     ("ro.boot.veritymode", "enforcing"),
     ("vendor.boot.vbmeta.device_state", "locked"),
     ("vendor.boot.verifiedbootstate", "green"),
+    ("ro.boot.vbmeta.invalidate_on_error", "yes"),
+    ("ro.boot.vbmeta.avb_version", "1.0"),
+    ("ro.boot.vbmeta.hash_alg", "sha256"),
+    ("ro.boot.vbmeta.size", "4096"),
     ("ro.boot.warranty_bit", "0"),
     ("ro.warranty_bit", "0"),
     ("ro.vendor.boot.warranty_bit", "0"),
@@ -48,15 +56,14 @@ const FAKE_PROPS: &[(&str, &str)] = &[
     ("ro.adb.secure", "1"),
     ("ro.boot.realmebootstate", "green"),
     ("ro.boot.realme.lockstate", "1"),
+    ("persist.logd.size", ""),
+    ("persist.logd.size.crash", ""),
+    ("persist.logd.size.system", ""),
+    ("persist.logd.size.main", ""),
 ];
 
-/// 存在则删除的属性 (调试痕迹类)。
-const DELETE_PROPS: &[&str] = &[
-    "persist.logd.size",
-    "persist.logd.size.crash",
-    "persist.logd.size.system",
-    "persist.logd.size.main",
-];
+/// bootmode 伪装 (FolkPatch patch_boot_keys)。
+const BOOT_KEYS: &[&str] = &["ro.bootmode", "ro.boot.bootmode", "vendor.boot.bootmode"];
 
 fn make_rp() -> ResetProp {
     ResetProp {
@@ -79,7 +86,7 @@ fn apply_props() -> Result<()> {
 
     let mut set = 0usize;
     for (name, value) in FAKE_PROPS {
-        // 只改已存在的属性, 绝不创建
+        // 只改已存在的属性, 绝不创建; 空值 = 设为空串 (保持属性区无空洞)
         if rp.get(name).is_some() {
             match rp.set(name, value) {
                 Ok(()) => set += 1,
@@ -87,10 +94,12 @@ fn apply_props() -> Result<()> {
             }
         }
     }
-    for name in DELETE_PROPS {
-        if rp.get(name).is_some() {
-            if let Err(e) = rp.delete(name) {
-                warn!("fakelock: delete {name} failed: {e}");
+    for key in BOOT_KEYS {
+        if let Some(val) = rp.get(key) {
+            if val.contains("recovery") {
+                if let Err(e) = rp.set(key, "unknown") {
+                    warn!("fakelock: patch bootmode {key} failed: {e}");
+                }
             }
         }
     }
