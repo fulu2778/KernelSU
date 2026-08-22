@@ -55,8 +55,8 @@ class FakeLockRepository {
             append("# KernelSU FakeLock: disguise bootloader as locked. Managed by Manager; do not edit.\n")
             append("# only touch props that already exist; never create new ones\n")
             append("RP=$RESETPROP\n")
-            append("sp() { [ -n \"$(\"$RP\" \"$1\" 2>/dev/null)\" ] && \"$RP\" -n \"$1\" \"$2\" >/dev/null 2>&1; }\n")
-            append("dp() { [ -n \"$(\"$RP\" \"$1\" 2>/dev/null)\" ] && \"$RP\" -d \"$1\" >/dev/null 2>&1; }\n")
+            append("sp() { [ -n \"\$(\"\${'$'}RP\" \"\$1\" 2>/dev/null)\" ] && \"\${'$'}RP\" -n \"\$1\" \"\$2\" >/dev/null 2>&1; }\n")
+            append("dp() { [ -n \"\$(\"\${'$'}RP\" \"\$1\" 2>/dev/null)\" ] && \"\${'$'}RP\" -d \"\$1\" >/dev/null 2>&1; }\n")
             for ((name, value) in PATCH_LIST) {
                 if (value.isEmpty()) {
                     append("dp \"$name\"\n")
