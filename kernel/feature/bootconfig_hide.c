@@ -5,23 +5,24 @@
  * bootconfig_hide: 对非 root 读者伪装 /proc/bootconfig 中的引导链状态。
  *
  * resetprop 只能改属性区, 改不了 /proc/bootconfig (内核 xbc 快照)。
- * 检测应用交叉比对 getprop 与 bootconfig, 值不一致即报"属性被修改"。
- * 本特性在启动后快照真实 bootconfig, 做与 FakeLock (props 伪装) 完全
- * 一致的替换后缓存; kprobe 挂在 boot_config_proc_show 入口, 非 root
- * 读者重定向到 trampoline 输出替换版本, root 读者与禁用时原样透传。
+ * 检测应用若能读到 bootconfig, 可与 getprop 交叉比对发现属性伪装。
+ * 本特性在启动后快照真实 bootconfig, 做与 FakeLock (ksud 原生属性
+ * 伪装) 一致的替换后缓存; kprobe 挂在 boot_config_proc_show 入口,
+ * 非 root 读者重定向到 trampoline 输出替换版本, root 读者与禁用时
+ * 原样透传。
  *
- * 开关与 FakeLock 的开机脚本合一 (/data/adb/post-fs-data.d/fakelock.sh):
- * delayed work 快照时检查该文件存在与否, 存在才启用伪装——props 与
- * bootconfig 因此永远处于同一状态 (两者都是"下次重启恢复真实值")。
- * 替换常量必须与 Manager 端 FakeLockRepository.PATCH_LIST 保持一致。
+ * 行为由 KSU_FEATURE_BOOTCONFIG_HIDE 开关控制(默认关闭), 与 ksud 的
+ * fakelock 子命令联动: ksud fakelock enable/disable 会同时切换本
+ * feature 并重放属性伪装, 两者永远处于同一状态。
+ * 替换常量必须与 ksud fakelock 模块的属性表保持一致。
  */
 
 #include "bootconfig_hide.h"
+#include "policy/feature.h"
 #include "infra/symbol_resolver.h"
 #include "klog.h"
 
 #include <linux/cred.h>
-#include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/kprobes.h>
@@ -32,13 +33,9 @@
 #include <linux/workqueue.h>
 #include <asm/ptrace.h>
 
-#define FAKELOCK_SCRIPT "/data/adb/post-fs-data.d/fakelock.sh"
 #define BOOTCONFIG_MAX_LEN (128 * 1024)
 
-/* 与 FakeLockRepository.PATCH_LIST 中的伪值保持一致 */
-#define FAKE_VBMETA_DEVICE_STATE "locked"
-#define FAKE_VERIFIED_BOOT_STATE "green"
-
+static bool ksu_bootconfig_hide_enabled __read_mostly = false;
 static char *fake_bootconfig;
 static struct delayed_work bootconfig_snapshot_work;
 static struct kprobe kp_bootconfig;
@@ -55,7 +52,7 @@ static int fake_boot_config_proc_show(struct seq_file *m, void *v)
 
 static int bootconfig_pre(struct kprobe *p, struct pt_regs *regs)
 {
-    if (!fake_bootconfig)
+    if (!fake_bootconfig || !ksu_bootconfig_hide_enabled)
         return 0;
     /* root 读者(自己人)透传真实内容 */
     if (uid_eq(current_uid(), GLOBAL_ROOT_UID))
@@ -68,9 +65,9 @@ static int bootconfig_pre(struct kprobe *p, struct pt_regs *regs)
     return 1;
 }
 
-/* 对单行做替换: unlocked/orange 全局出现即替换为锁定态值 (仅存在于
- * 这两个值; avb_version/size 等其余条目保持真实, 与精简后的
- * FakeLockRepository.PATCH_LIST 一致) */
+/* 值级替换: unlocked/orange 全局出现即替换为锁定态值 (仅存在于这两个
+ * 值; avb_version/size 等其余条目保持真实, 与 ksud fakelock 的
+ * 属性表策略一致: 不伪造不指示锁状态的值) */
 static int subst_line(char *dst, size_t dst_size, const char *line)
 {
     if (strstr(line, "unlocked") || strstr(line, "orange")) {
@@ -127,30 +124,9 @@ static void bootconfig_snapshot(struct work_struct *w)
     char *real, *fake, *line, *dst;
     size_t fake_len;
 
-    /* /data 未挂载前无法判定 FakeLock 开关, 重试等待; work 在模块加载
-     * +10s 触发, 对应早期用户态, 通常还需再等 1~2 个周期 */
-    {
-        struct file *fp = filp_open("/data/adb", O_RDONLY | O_DIRECTORY, 0);
-        if (IS_ERR(fp)) {
-            if (++attempts < 12)
-                schedule_delayed_work(&bootconfig_snapshot_work, msecs_to_jiffies(5000));
-            return;
-        }
-        filp_close(fp, 0);
-    }
-
-    /* FakeLock 开关 = 其开机脚本存在与否 */
-    {
-        struct file *fp = filp_open(FAKELOCK_SCRIPT, O_RDONLY, 0);
-        if (IS_ERR(fp)) {
-            fake_bootconfig = NULL; /* 禁用: 透传真实内容 */
-            return;
-        }
-        filp_close(fp, 0);
-    }
-
     real = read_file_all("/proc/bootconfig", BOOTCONFIG_MAX_LEN);
     if (!real) {
+        /* /proc 尚未就绪则重试 (最多 1 分钟) */
         if (++attempts < 12)
             schedule_delayed_work(&bootconfig_snapshot_work, msecs_to_jiffies(5000));
         return;
@@ -182,7 +158,6 @@ static void bootconfig_snapshot(struct work_struct *w)
     kfree(real);
 
     fake_len = dst - fake + 1;
-    /* 收缩到实际大小 */
     {
         char *shrunk = kmalloc(fake_len, GFP_KERNEL);
         if (shrunk) {
@@ -193,8 +168,29 @@ static void bootconfig_snapshot(struct work_struct *w)
     }
 
     smp_store_release(&fake_bootconfig, fake);
-    pr_info("bootconfig_hide: armed (%zu bytes)\n", fake_len - 1);
+    pr_info("bootconfig_hide: snapshot ready (%zu bytes, enabled=%d)\n", fake_len - 1,
+            ksu_bootconfig_hide_enabled);
 }
+
+static int ksu_bootconfig_hide_feature_get(u64 *value)
+{
+    *value = ksu_bootconfig_hide_enabled ? 1 : 0;
+    return 0;
+}
+
+static int ksu_bootconfig_hide_feature_set(u64 value)
+{
+    ksu_bootconfig_hide_enabled = value != 0;
+    pr_info("bootconfig_hide: set to %d\n", ksu_bootconfig_hide_enabled);
+    return 0;
+}
+
+static const struct ksu_feature_handler bootconfig_hide_handler = {
+    .feature_id = KSU_FEATURE_BOOTCONFIG_HIDE,
+    .name = "bootconfig_hide",
+    .get_handler = ksu_bootconfig_hide_feature_get,
+    .set_handler = ksu_bootconfig_hide_feature_set,
+};
 
 int __init ksu_bootconfig_hide_init(void)
 {
@@ -210,9 +206,10 @@ int __init ksu_bootconfig_hide_init(void)
         return 0;
     }
 
-    /* 快照需等 /proc 挂载且 post-fs-data 阶段 FakeLock 脚本就位 */
+    ksu_register_feature_handler(&bootconfig_hide_handler);
+
     INIT_DELAYED_WORK(&bootconfig_snapshot_work, bootconfig_snapshot);
-    schedule_delayed_work(&bootconfig_snapshot_work, msecs_to_jiffies(10000));
+    schedule_delayed_work(&bootconfig_snapshot_work, msecs_to_jiffies(5000));
 
     pr_info("bootconfig_hide: active\n");
     return 0;
@@ -220,6 +217,7 @@ int __init ksu_bootconfig_hide_init(void)
 
 void __exit ksu_bootconfig_hide_exit(void)
 {
+    ksu_unregister_feature_handler(KSU_FEATURE_BOOTCONFIG_HIDE);
     cancel_delayed_work_sync(&bootconfig_snapshot_work);
     if (kp_bootconfig.symbol_name) {
         unregister_kprobe(&kp_bootconfig);

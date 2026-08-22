@@ -23,6 +23,8 @@ mod defs;
 #[cfg(target_os = "android")]
 mod feature;
 #[cfg(target_os = "android")]
+mod fakelock;
+#[cfg(target_os = "android")]
 mod init_event;
 #[cfg(target_os = "android")]
 mod ksucalls;

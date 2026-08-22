@@ -9,8 +9,8 @@ use crate::boot_patch::{BootPatchArgs, BootRestoreArgs};
 use crate::lkm_image::BootPatchV2Args;
 use crate::module::regenerate_preinit_rc;
 use crate::{
-    apk_sign, assets, debug, defs, init_event, ksu_uapi, ksucalls, module, module_config, sulog,
-    utils,
+    apk_sign, assets, debug, defs, init_event, ksu_uapi, ksucalls, module,
+    module_config, sulog, utils,
 };
 
 /// KernelSU userspace cli
@@ -19,6 +19,17 @@ use crate::{
 struct Args {
     #[command(subcommand)]
     command: Commands,
+}
+
+#[derive(clap::Subcommand, Debug)]
+#[cfg(target_os = "android")]
+enum FakelockCommand {
+    /// Enable: disguise bootloader as locked (props + bootconfig, effective immediately)
+    Enable,
+    /// Disable: props revert to real values on next reboot
+    Disable,
+    /// Show current state
+    Status,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -31,6 +42,13 @@ enum Commands {
 
     /// Trigger `post-fs-data` event
     PostFsData,
+
+    /// Manage FakeLock (bootloader lock-state disguise)
+    #[cfg(target_os = "android")]
+    Fakelock {
+        #[command(subcommand)]
+        command: FakelockCommand,
+    },
 
     /// Trigger `service` event
     Services,
@@ -513,6 +531,15 @@ pub fn run() -> Result<()> {
 
     let result = match cli.command {
         Commands::PostFsData => init_event::on_post_data_fs(),
+        #[cfg(target_os = "android")]
+        Commands::Fakelock { command } => match command {
+            FakelockCommand::Enable => fakelock::enable(),
+            FakelockCommand::Disable => fakelock::disable(),
+            FakelockCommand::Status => {
+                fakelock::status();
+                Ok(())
+            }
+        },
         Commands::BootCompleted => {
             init_event::on_boot_completed();
             Ok(())

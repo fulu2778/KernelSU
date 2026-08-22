@@ -51,6 +51,9 @@ pub fn on_post_data_fs() -> Result<()> {
         }
     }
 
+    // FakeLock: resetprop 是内存属性, 每次开机重放伪装
+    crate::fakelock::on_post_fs_data();
+
     let module_dir = defs::MODULE_DIR;
 
     assets::ensure_binaries(true).with_context(|| "Failed to extract bin assets")?;

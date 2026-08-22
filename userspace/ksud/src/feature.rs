@@ -22,6 +22,7 @@ pub enum FeatureId {
     AdbRoot = 3,
     SelinuxHide = 4,
     MountHide = 5,
+    BootconfigHide = 6,
 }
 
 impl FeatureId {
@@ -33,6 +34,7 @@ impl FeatureId {
             3 => Some(Self::AdbRoot),
             4 => Some(Self::SelinuxHide),
             5 => Some(Self::MountHide),
+            6 => Some(Self::BootconfigHide),
             _ => None,
         }
     }
@@ -45,6 +47,7 @@ impl FeatureId {
             Self::AdbRoot => "adb_root",
             Self::SelinuxHide => "selinux_hide",
             Self::MountHide => "mount_hide",
+            Self::BootconfigHide => "bootconfig_hide",
         }
     }
 
@@ -66,6 +69,9 @@ impl FeatureId {
             Self::MountHide => {
                 "Mount Hide - hide module mounts from /proc output while keeping modules functional"
             }
+            Self::BootconfigHide => {
+                "Bootconfig Hide - spoof verified-boot state in /proc/bootconfig for non-root readers"
+            }
         }
     }
 }
@@ -78,11 +84,12 @@ fn parse_feature_id(name: &str) -> Result<FeatureId> {
         "adb_root" | "3" => Ok(FeatureId::AdbRoot),
         "selinux_hide" | "4" => Ok(FeatureId::SelinuxHide),
         "mount_hide" | "5" => Ok(FeatureId::MountHide),
+        "bootconfig_hide" | "6" => Ok(FeatureId::BootconfigHide),
         _ => bail!("Unknown feature: {name}"),
     }
 }
 
-fn set_kernel_feature(feature_id: FeatureId, value: u64) -> Result<()> {
+pub(crate) fn set_kernel_feature(feature_id: FeatureId, value: u64) -> Result<()> {
     crate::ksucalls::set_feature(feature_id as u32, value)
         .with_context(|| format!("Failed to set feature {} to {value}", feature_id.name()))?;
 
