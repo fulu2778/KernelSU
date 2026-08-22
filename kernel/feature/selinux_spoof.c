@@ -36,6 +36,10 @@
 // security/selinux/include/avc.h (see kernel/Kbuild -I paths)
 #include "avc.h"
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
+extern struct selinux_state selinux_state;
+#endif
+
 static bool ksu_selinux_spoof_enabled __read_mostly = false;
 
 static struct kprobe kp_avc_audit;
@@ -65,7 +69,11 @@ static int avc_audit_pre(struct kprobe *p, struct pt_regs *regs)
 
         if (sad->tsid == ksu_sid || sad->tsid == priv_app_sid)
             goto check;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
         if (security_sid_to_context(sad->tsid, &ctx, &len) == 0) {
+#else
+        if (security_sid_to_context(&selinux_state, sad->tsid, &ctx, &len) == 0) {
+#endif
             if (strcmp(ctx, "u:r:ksu:s0") == 0)
                 ksu_sid = sad->tsid;
             else if (strncmp(ctx, "u:r:priv_app:", 13) == 0)

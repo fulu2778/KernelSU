@@ -10,6 +10,7 @@ enum ksu_feature_id {
     KSU_FEATURE_MOUNT_HIDE = 5,
     /* 5/6+ are fork-private; renumber if upstream claims these IDs */
     KSU_FEATURE_BOOTCONFIG_HIDE = 6,
+    KSU_FEATURE_SELINUX_SPOOF = 7,
 
     KSU_FEATURE_MAX
 };
