@@ -55,162 +55,152 @@ static struct kprobe kp_mountinfo, kp_vfsmnt, kp_vfsstat;
 /* trampoline: 命中挂载后跳入，直接返回 0 (seq_file: 当前条目不输出) */
 static int mount_hide_skip_show(struct seq_file *m, struct vfsmount *vfsmnt)
 {
-	return 0;
+    return 0;
 }
 
 /* 系统分区: 挂载点(而非 root) 命中这些带尾斜杠前缀，天然排除分区根本身
  * (如 /system 不命中 /system/)。模块挂载点必然落在只读系统分区内的文件上,
  * 这是无法伪装的结构性特征, 与 mountsource/config 无关。 */
 static const char *const sys_partitions[] = {
-	"/system/",
-	"/product/",
-	"/vendor/",
-	"/system_ext/",
-	"/odm/",
-	"/vendor_dlkm/",
-	"/system_dlkm/",
+    "/system/", "/product/", "/vendor/", "/system_ext/", "/odm/", "/vendor_dlkm/", "/system_dlkm/",
 };
 
 static bool mount_root_is_sus_mount(struct vfsmount *mnt)
 {
-	char *buf;
-	char *path;
-	char *root;
-	int i;
+    char *buf;
+    char *path;
+    char *root;
+    int i;
 
-	if (unlikely(!mnt || !mnt->mnt_root || !ksu_mount_hide_enabled))
-		return false;
+    if (unlikely(!mnt || !mnt->mnt_root || !ksu_mount_hide_enabled))
+        return false;
 
-	buf = kmalloc(MOUNT_HIDE_BUF_SIZE * 2, GFP_ATOMIC);
-	if (unlikely(!buf))
-		return false;
+    buf = kmalloc(MOUNT_HIDE_BUF_SIZE * 2, GFP_ATOMIC);
+    if (unlikely(!buf))
+        return false;
 
-	/* 判据1 (结构性): d_path 沿挂载边界返回挂载点全路径。
+    /* 判据1 (结构性): d_path 沿挂载边界返回挂载点全路径。
 	 * 系统自身挂载点全是分区根(/system /product /vendor...), 不命中;
 	 * 任何覆盖系统文件的模块挂载(bind / overlay / 任意 mountsource)命中。 */
-	path = d_path(&(struct path){ .mnt = mnt, .dentry = mnt->mnt_root },
-		      buf, MOUNT_HIDE_BUF_SIZE);
-	if (likely(!IS_ERR(path))) {
-		for (i = 0; i < ARRAY_SIZE(sys_partitions); i++) {
-			if (strncmp(path, sys_partitions[i],
-				    strlen(sys_partitions[i])) == 0) {
-				kfree(buf);
-				return true;
-			}
-		}
-	}
+    path = d_path(&(struct path){ .mnt = mnt, .dentry = mnt->mnt_root }, buf, MOUNT_HIDE_BUF_SIZE);
+    if (likely(!IS_ERR(path))) {
+        for (i = 0; i < ARRAY_SIZE(sys_partitions); i++) {
+            if (strncmp(path, sys_partitions[i], strlen(sys_partitions[i])) == 0) {
+                kfree(buf);
+                return true;
+            }
+        }
+    }
 
-	/* 判据2 (兜底): root 字段(dentry_path_raw 不跨挂载边界)命中
+    /* 判据2 (兜底): root 字段(dentry_path_raw 不跨挂载边界)命中
 	 * KSU 模块挂载前缀(默认 /adb/modules), 覆盖传统 bind staging 与
 	 * /apex 内文件覆盖(如 zygisk dex2oat) */
-	root = dentry_path_raw(mnt->mnt_root, buf + MOUNT_HIDE_BUF_SIZE,
-			       MOUNT_HIDE_BUF_SIZE);
-	if (likely(!IS_ERR(root))) {
-		for (i = 0; i < MOUNT_HIDE_MAX_PREFIX &&
-		     i * MOUNT_HIDE_MAX_PREFIX_LEN < sizeof(mount_hide_prefix); i++) {
-			const char *p = mount_hide_prefix + i * MOUNT_HIDE_MAX_PREFIX_LEN;
-			if (p[0] == '\0')
-				break;
-			if (strncmp(root, p, strlen(p)) == 0) {
-				kfree(buf);
-				return true;
-			}
-		}
-	}
+    root = dentry_path_raw(mnt->mnt_root, buf + MOUNT_HIDE_BUF_SIZE, MOUNT_HIDE_BUF_SIZE);
+    if (likely(!IS_ERR(root))) {
+        for (i = 0; i < MOUNT_HIDE_MAX_PREFIX && i * MOUNT_HIDE_MAX_PREFIX_LEN < sizeof(mount_hide_prefix); i++) {
+            const char *p = mount_hide_prefix + i * MOUNT_HIDE_MAX_PREFIX_LEN;
+            if (p[0] == '\0')
+                break;
+            if (strncmp(root, p, strlen(p)) == 0) {
+                kfree(buf);
+                return true;
+            }
+        }
+    }
 
-	kfree(buf);
-	return false;
+    kfree(buf);
+    return false;
 }
 
 /* kprobe pre_handler: x0=seq_file*, x1=vfsmount* (arm64) */
 static int mount_hide_pre(struct kprobe *p, struct pt_regs *regs)
 {
-	struct vfsmount *mnt = (struct vfsmount *)regs->regs[1];
+    struct vfsmount *mnt = (struct vfsmount *)regs->regs[1];
 
-	if (mount_root_is_sus_mount(mnt)) {
-		regs->pc = (unsigned long)mount_hide_skip_show;
-		return 1; /* 跳过原指令单步，直接执行 trampoline */
-	}
-	return 0;
+    if (mount_root_is_sus_mount(mnt)) {
+        regs->pc = (unsigned long)mount_hide_skip_show;
+        return 1; /* 跳过原指令单步，直接执行 trampoline */
+    }
+    return 0;
 }
 
 static int mount_hide_kp_setup(struct kprobe *kp, const char *name)
 {
-	kp->symbol_name = name;
-	kp->pre_handler = mount_hide_pre;
-	return register_kprobe(kp);
+    kp->symbol_name = name;
+    kp->pre_handler = mount_hide_pre;
+    return register_kprobe(kp);
 }
 
 static int ksu_mount_hide_feature_get(u64 *value)
 {
-	*value = ksu_mount_hide_enabled ? 1 : 0;
-	return 0;
+    *value = ksu_mount_hide_enabled ? 1 : 0;
+    return 0;
 }
 
 static int ksu_mount_hide_feature_set(u64 value)
 {
-	ksu_mount_hide_enabled = value != 0;
-	pr_info("mount_hide: set to %d\n", ksu_mount_hide_enabled);
-	return 0;
+    ksu_mount_hide_enabled = value != 0;
+    pr_info("mount_hide: set to %d\n", ksu_mount_hide_enabled);
+    return 0;
 }
 
 static const struct ksu_feature_handler mount_hide_handler = {
-	.feature_id = KSU_FEATURE_MOUNT_HIDE,
-	.name = "mount_hide",
-	.get_handler = ksu_mount_hide_feature_get,
-	.set_handler = ksu_mount_hide_feature_set,
+    .feature_id = KSU_FEATURE_MOUNT_HIDE,
+    .name = "mount_hide",
+    .get_handler = ksu_mount_hide_feature_get,
+    .set_handler = ksu_mount_hide_feature_set,
 };
 
 int __init ksu_mount_hide_init(void)
 {
-	int ret;
+    int ret;
 #ifdef __aarch64__
-	/* 内核已集成 susfs 输出过滤时让位，避免重复 hook */
-	if (find_kernel_symbol_exact("susfs_show_mountinfo")) {
-		pr_info("mount_hide: susfs already present, skip\n");
-		return 0;
-	}
+    /* 内核已集成 susfs 输出过滤时让位，避免重复 hook */
+    if (find_kernel_symbol_exact("susfs_show_mountinfo")) {
+        pr_info("mount_hide: susfs already present, skip\n");
+        return 0;
+    }
 #else
-	if (find_kernel_symbol_exact("susfs_show_mountinfo")) {
-		pr_info("mount_hide: susfs already present, skip\n");
-		return 0;
-	}
+    if (find_kernel_symbol_exact("susfs_show_mountinfo")) {
+        pr_info("mount_hide: susfs already present, skip\n");
+        return 0;
+    }
 #endif
 
-	ret = mount_hide_kp_setup(&kp_mountinfo, "show_mountinfo");
-	if (ret) {
-		pr_warn("mount_hide: register show_mountinfo failed: %d\n", ret);
-		/* 非 fatal: 特性降级，不影响 KSU 主体 */
-		return 0;
-	}
-	ret = mount_hide_kp_setup(&kp_vfsmnt, "show_vfsmnt");
-	if (ret) {
-		pr_warn("mount_hide: register show_vfsmnt failed: %d\n", ret);
-		unregister_kprobe(&kp_mountinfo);
-		return 0;
-	}
-	ret = mount_hide_kp_setup(&kp_vfsstat, "show_vfsstat");
-	if (ret) {
-		pr_warn("mount_hide: register show_vfsstat failed: %d\n", ret);
-		unregister_kprobe(&kp_mountinfo);
-		unregister_kprobe(&kp_vfsmnt);
-		return 0;
-	}
+    ret = mount_hide_kp_setup(&kp_mountinfo, "show_mountinfo");
+    if (ret) {
+        pr_warn("mount_hide: register show_mountinfo failed: %d\n", ret);
+        /* 非 fatal: 特性降级，不影响 KSU 主体 */
+        return 0;
+    }
+    ret = mount_hide_kp_setup(&kp_vfsmnt, "show_vfsmnt");
+    if (ret) {
+        pr_warn("mount_hide: register show_vfsmnt failed: %d\n", ret);
+        unregister_kprobe(&kp_mountinfo);
+        return 0;
+    }
+    ret = mount_hide_kp_setup(&kp_vfsstat, "show_vfsstat");
+    if (ret) {
+        pr_warn("mount_hide: register show_vfsstat failed: %d\n", ret);
+        unregister_kprobe(&kp_mountinfo);
+        unregister_kprobe(&kp_vfsmnt);
+        return 0;
+    }
 
-	ksu_register_feature_handler(&mount_hide_handler);
+    ksu_register_feature_handler(&mount_hide_handler);
 
-	pr_info("mount_hide: active (%s)\n", mount_hide_prefix);
-	return 0;
+    pr_info("mount_hide: active (%s)\n", mount_hide_prefix);
+    return 0;
 }
 
 void __exit ksu_mount_hide_exit(void)
 {
-	ksu_unregister_feature_handler(KSU_FEATURE_MOUNT_HIDE);
-	if (kp_mountinfo.symbol_name)
-		unregister_kprobe(&kp_mountinfo);
-	if (kp_vfsmnt.symbol_name)
-		unregister_kprobe(&kp_vfsmnt);
-	if (kp_vfsstat.symbol_name)
-		unregister_kprobe(&kp_vfsstat);
-	pr_info("mount_hide: deactivated\n");
+    ksu_unregister_feature_handler(KSU_FEATURE_MOUNT_HIDE);
+    if (kp_mountinfo.symbol_name)
+        unregister_kprobe(&kp_mountinfo);
+    if (kp_vfsmnt.symbol_name)
+        unregister_kprobe(&kp_vfsmnt);
+    if (kp_vfsstat.symbol_name)
+        unregister_kprobe(&kp_vfsstat);
+    pr_info("mount_hide: deactivated\n");
 }
