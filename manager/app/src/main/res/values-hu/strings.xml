@@ -132,7 +132,7 @@ Csatlakozzon a %2$s csatornánkhoz</string>
     <string name="settings_kernel_umount">Kernel leválasztása</string>
     <string name="settings_kernel_umount_summary">KernelSU által vezérelt kernel szintű leválasztási viselkedés</string>
     <string name="settings_selinux_spoof">Spoof SELinux audit</string>
-    <string name="settings_selinux_spoof_summary">Mask the ksu domain in SELinux audit logs, hiding root traces from apps</string>
+    <string name="settings_selinux_spoof_summary">Mask ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Bootloader-állapot elrejtése</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 

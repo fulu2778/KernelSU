@@ -140,7 +140,7 @@
     <string name="settings_kernel_umount">モジュールのアンマウント (カーネルレベル)</string>
     <string name="settings_kernel_umount_summary">アプリプロファイルに基づいて、カーネルからモジュールをアンマウントします。</string>
     <string name="settings_selinux_spoof">Spoof SELinux audit</string>
-    <string name="settings_selinux_spoof_summary">Mask the ksu domain in SELinux audit logs, hiding root traces from apps</string>
+    <string name="settings_selinux_spoof_summary">Mask ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Bootloader ステータスを隠す</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 

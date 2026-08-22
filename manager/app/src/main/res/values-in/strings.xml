@@ -200,7 +200,7 @@
     <string name="settings_selinux_hide">Sembunyikan modifikasi SELinux</string>
     <string name="settings_selinux_hide_summary">Mencegah aplikasi mendeteksi modifikasi SELinux</string>
     <string name="settings_selinux_spoof">Spoof SELinux audit</string>
-    <string name="settings_selinux_spoof_summary">Mask the ksu domain in SELinux audit logs, hiding root traces from apps</string>
+    <string name="settings_selinux_spoof_summary">Mask ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Sembunyikan status Bootloader</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
