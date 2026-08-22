@@ -82,7 +82,7 @@ Junte-se ao nosso canal %2$s</string>
     <string name="settings_kernel_umount_summary">Comportamento de desmontagem ao nível do kernel controlado pelo KernelSU</string>
     <string name="settings_selinux_spoof">Spoof SELinux audit</string>
     <string name="settings_selinux_spoof_summary">Mask ksu domain in avc audit logs so apps cannot see root traces</string>
-    <string name="settings_fake_lock">Ocultar estado do Bootloader</string>
+    <string name="settings_fake_lock">Hide unlock status</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">Ocultar montagens</string>

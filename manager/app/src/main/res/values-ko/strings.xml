@@ -179,7 +179,7 @@
     <string name="settings_kernel_umount_summary">앱 프로필에 따라 커널에서 모듈을 언마운트합니다</string>
     <string name="settings_selinux_spoof">Spoof SELinux audit</string>
     <string name="settings_selinux_spoof_summary">Mask ksu domain in avc audit logs so apps cannot see root traces</string>
-    <string name="settings_fake_lock">Bootloader 상태 숨기기</string>
+    <string name="settings_fake_lock">Hide unlock status</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">마운트 숨기기</string>
