@@ -65,15 +65,26 @@ jobs:
           echo "keystore=$(base64 -w 0 pr-key.jks)" >> $GITHUB_OUTPUT
 
       - name: Extract certificate hash and size
-        if: github.event_name == 'pull_request'
         id: extract
         env:
-          STORE_PASS: ${{ steps.gen.outputs.keystore_password }}
+          PROD_STORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          PR_STORE_PASS: ${{ steps.gen.outputs.keystore_password }}
         run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            KEYSTORE_FILE=pr-key.jks
+            ALIAS=pr-key
+            STORE_PASS="$PR_STORE_PASS"
+          else
+            echo "${{ secrets.KEYSTORE }}" | base64 -d > prod-key.jks
+            KEYSTORE_FILE=prod-key.jks
+            ALIAS=${{ secrets.KEY_ALIAS }}
+            STORE_PASS="$PROD_STORE_PASS"
+          fi
+
           # Export DER certificate
           keytool -exportcert \
-            -alias pr-key \
-            -keystore pr-key.jks \
+            -alias "$ALIAS" \
+            -keystore "$KEYSTORE_FILE" \
             -storepass "$STORE_PASS" \
             -file pr-cert.der
 
