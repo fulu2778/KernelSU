@@ -62,7 +62,10 @@ static int avc_audit_pre(struct kprobe *p, struct pt_regs *regs)
     if (!sad)
         return 0;
 
-    /* 惰性解析 sid: 首次遇到 ksu/priv_app 的 tsid 时缓存 */
+    /* 惰性解析 sid: 首次遇到 ksu/priv_app 的 tsid 时缓存。
+     * 注意: avc_audit_post_callback 只在进程上下文被调用 (审计事件),
+     * 且 sidtab_sid2str 的分配用 GFP_ATOMIC、锁为短临界区——与 susfs
+     * 在函数内部做同样的转换等价, 风险已评估为可接受。 */
     if (ksu_sid == (u32)-1 || priv_app_sid == (u32)-1) {
         char *ctx = NULL;
         u32 len = 0;
