@@ -194,12 +194,12 @@
     <string name="settings_sucompat_summary">Allow Root access via /system/bin/su, in new processes</string>
     <string name="settings_kernel_umount">Kernel umount</string>
     <string name="settings_kernel_umount_summary">Unmount modules from kernel in App Profile</string>
-    <string name="settings_mount_hide">Hide mounts</string>
-    <string name="settings_mount_hide_summary">Prevent applications from detecting module mounts</string>
+    <string name="settings_mount_hide">Hide module mounts</string>
+    <string name="settings_mount_hide_summary">Hide module mounts at the kernel level; apps cannot detect them while modules keep working</string>
     <string name="settings_selinux_hide">Hide SELinux modification</string>
     <string name="settings_selinux_hide_summary">Prevent applications from detecting SELinux modifications</string>
-    <string name="settings_fake_lock">Hide Bootloader status</string>
-    <string name="settings_fake_lock_summary">Disguise the bootloader unlock state from apps</string>
+    <string name="settings_fake_lock">Hide unlock status</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
     <string name="settings_selinux_hide_reboot_required">Reboot to take effect</string>
     <string name="settings_selinux_hide_failed">Error: %d</string>
     <string name="settings_sulog">SU Log</string>

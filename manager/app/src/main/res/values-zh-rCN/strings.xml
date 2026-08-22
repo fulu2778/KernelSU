@@ -174,8 +174,8 @@
     <string name="settings_sucompat_summary">允许通过 /system/bin/su 获取 Root 权限</string>
     <string name="settings_kernel_umount">卸载模块（内核级）</string>
     <string name="settings_kernel_umount_summary">在内核给需要的应用卸载模块</string>
-    <string name="settings_mount_hide">隐藏挂载</string>
-    <string name="settings_mount_hide_summary">在内核层将模块挂载从 /proc 输出中隐藏，保留模块功能</string>
+    <string name="settings_mount_hide">隐藏模块挂载</string>
+    <string name="settings_mount_hide_summary">在内核层面隐藏模块的挂载记录，应用无法检测，模块功能不受影响</string>
 
     <string name="module_install_prompt_with_name">将安装以下模块：%1$s</string>
     <string name="confirm">确认</string>
@@ -269,8 +269,8 @@
     <string name="settings_adb_root_summary">以 Root 权限运行 adbd 守护进程</string>
     <string name="settings_selinux_hide">隐藏 SELinux 修改</string>
     <string name="settings_selinux_hide_summary">阻止应用检测 SELinux 修改</string>
-    <string name="settings_fake_lock">隐藏 Bootloader 解锁状态</string>
-    <string name="settings_fake_lock_summary">通过 resetprop 伪装 Bootloader 解锁状态，防止应用检测</string>
+    <string name="settings_fake_lock">隐藏 BL 解锁状态</string>
+    <string name="settings_fake_lock_summary">将设备伪装为 BL 未解锁状态，避免应用检测；重启后自动生效</string>
 
     <string name="settings_selinux_hide_reboot_required">重启生效</string>
     <string name="settings_selinux_hide_failed">错误：%d</string>
