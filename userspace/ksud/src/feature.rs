@@ -351,6 +351,9 @@ pub fn list_features() {
         FeatureId::Sulog,
         FeatureId::AdbRoot,
         FeatureId::SelinuxHide,
+        FeatureId::MountHide,
+        FeatureId::BootconfigHide,
+        FeatureId::SelinuxSpoof,
     ];
 
     for feature_id in &all_features {
@@ -414,6 +417,9 @@ pub fn save_config() -> Result<()> {
         FeatureId::Sulog,
         FeatureId::AdbRoot,
         FeatureId::SelinuxHide,
+        FeatureId::MountHide,
+        FeatureId::BootconfigHide,
+        FeatureId::SelinuxSpoof,
     ];
 
     for feature_id in &all_features {
