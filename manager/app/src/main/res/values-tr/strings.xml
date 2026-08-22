@@ -143,6 +143,9 @@
     <string name="settings_sucompat_summary">Uygulama Profilinde Süper Kullanıcı izni verilen uygulamaların /system/bin/su yürütülerek süper kullanıcı kabuğu almasına izin verir; yalnızca yeni işlemler için etkilidir.</string>
     <string name="settings_kernel_umount">Kernel bağlantısını kes</string>
     <string name="settings_kernel_umount_summary">KernelSU tarafından kontrol edilen çekirdek seviyesinde bağlantı kesme davranışı.</string>
+    <string name="settings_fake_lock">Bootloader durumunu gizle</string>
+    <string name="settings_fake_lock_summary">resetprop ile Bootloader kilit açma durumunu gizleyerek algılamayı önler</string>
+
     <string name="settings_mount_hide">Mountları gizle</string>
     <string name="settings_mount_hide_summary">/proc çıktısından modül mountları gizler, modül işlevini korur</string>
 

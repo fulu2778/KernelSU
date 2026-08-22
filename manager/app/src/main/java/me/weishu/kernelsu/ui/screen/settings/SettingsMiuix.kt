@@ -21,6 +21,7 @@ import androidx.compose.material.icons.rounded.ContactPage
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.GppGood
 import androidx.compose.material.icons.rounded.DeveloperMode
 import androidx.compose.material.icons.rounded.ElectricalServices
 import androidx.compose.material.icons.rounded.Fence
@@ -276,6 +277,22 @@ fun SettingPagerMiuix(
                                 enabled = uiState.selinuxHideStatus == "supported",
                                 checked = uiState.isSelinuxHideEnabled,
                                 onCheckedChange = actions.onSetSelinuxHideEnabled
+                            )
+
+                            SwitchPreference(
+                                title = stringResource(id = R.string.settings_fake_lock),
+                                summary = stringResource(id = R.string.settings_fake_lock_summary),
+                                startAction = {
+                                    Icon(
+                                        Icons.Rounded.GppGood,
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        contentDescription = stringResource(id = R.string.settings_fake_lock),
+                                        tint = colorScheme.onBackground
+                                    )
+                                },
+                                enabled = uiState.isFullFeatured,
+                                checked = uiState.isFakeLockEnabled,
+                                onCheckedChange = actions.onSetFakeLockEnabled
                             )
 
                             val sulogSummary = when (uiState.sulogStatus) {

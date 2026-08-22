@@ -44,6 +44,8 @@ data class SettingsUiState(
     val isDefaultUmountModules: Boolean = false,
     val mountHideStatus: String = "",
     val isMountHideEnabled: Boolean = false,
+    val isFullFeatured: Boolean = false,
+    val isFakeLockEnabled: Boolean = false,
 
     // ADB Root
     val adbRootStatus: String = "",
@@ -73,6 +75,7 @@ data class SettingsScreenActions(
     val onSetAdbRootEnabled: (Boolean) -> Unit,
     val onSetDefaultUmountModules: (Boolean) -> Unit,
     val onSetMountHideEnabled: (Boolean) -> Unit,
+    val onSetFakeLockEnabled: (Boolean) -> Unit,
     val onSetEnableWebDebugging: (Boolean) -> Unit,
     val onSetAutoJailbreak: (Boolean) -> Unit,
     val onSetUseSoftReboot: (Boolean) -> Unit,

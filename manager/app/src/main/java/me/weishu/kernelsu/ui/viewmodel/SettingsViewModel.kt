@@ -12,6 +12,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.data.fakelock.FakeLockRepository
+import me.weishu.kernelsu.ui.util.rootAvailable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.repository.SettingsRepository
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
@@ -65,6 +69,8 @@ class SettingsViewModel(
             val isAdbRootEnabled = repo.getAdbRootPersistValue() == 1L
             val mountHideStatus = repo.getMountHideStatus()
             val isMountHideEnabled = repo.isMountHideEnabled()
+            val isFullFeatured = Natives.isManager && !Natives.requireNewKernel() && rootAvailable()
+            val isFakeLockEnabled = FakeLockRepository().isEnabled()
             val isDefaultUmountModules = repo.isDefaultUmountModules()
             val uiMode = repo.uiMode
             val autoJailbreak = repo.autoJailbreak
@@ -101,6 +107,8 @@ class SettingsViewModel(
                     isSulogEnabled = isSulogEnabled,
                     mountHideStatus = mountHideStatus,
                     isMountHideEnabled = isMountHideEnabled,
+                    isFullFeatured = isFullFeatured,
+                    isFakeLockEnabled = isFakeLockEnabled,
                     isDefaultUmountModules = isDefaultUmountModules,
                     isLkmMode = isLkmMode,
                     autoJailbreak = autoJailbreak,
@@ -273,6 +281,13 @@ class SettingsViewModel(
                 repo.execKsudFeatureSave()
                 _uiState.update { it.copy(isMountHideEnabled = enabled) }
             }
+        }
+    }
+
+    fun setFakeLockEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            FakeLockRepository().setEnabled(enabled)
+            _uiState.update { it.copy(isFakeLockEnabled = enabled) }
         }
     }
 

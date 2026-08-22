@@ -153,6 +153,9 @@
     <string name="settings_sucompat_summary">允許透過 /system/bin/su 獲取 Root 權限，僅對新行程生效。</string>
     <string name="settings_kernel_umount">核心處理解除掛載模組</string>
     <string name="settings_kernel_umount_summary">在核心為需要的應用程式解除掛載模組</string>
+    <string name="settings_fake_lock">隱藏 Bootloader 解鎖狀態</string>
+    <string name="settings_fake_lock_summary">透過 resetprop 偽裝 Bootloader 解鎖狀態，防止應用程式偵測</string>
+
     <string name="settings_mount_hide">隱藏掛載</string>
     <string name="settings_mount_hide_summary">在內核層將模組掛載從 /proc 輸出中隱藏，保留模組功能</string>
 

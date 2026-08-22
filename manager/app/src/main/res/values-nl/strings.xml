@@ -141,6 +141,9 @@
     <string name="settings_sucompat_summary">Stelt apps met Superuser-toestemming in App Profiel in staat om een superuser-shell te verkrijgen door /system/bin/su uit te voeren; alleen effectief voor nieuwe processen.</string>
     <string name="settings_kernel_umount">Modules ontkoppelen (op kernelniveau)</string>
     <string name="settings_kernel_umount_summary">Kernel-niveau ontkoppelgedrag beheerd door KernelSU.</string>
+    <string name="settings_fake_lock">Bootloader-status verbergen</string>
+    <string name="settings_fake_lock_summary">Maskeert de ontgrendelstatus van de Bootloader via resetprop om detectie te voorkomen</string>
+
     <string name="settings_mount_hide">Mounts verbergen</string>
     <string name="settings_mount_hide_summary">Verbergt modul-mounts in /proc-uitvoer terwijl functionaliteit behouden blijft</string>
 

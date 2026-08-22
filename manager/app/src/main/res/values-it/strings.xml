@@ -130,6 +130,9 @@
     <string name="settings_sucompat_summary">Consente alle app con autorizzazione Superuser nel profilo app di ottenere una shell superuser eseguendo /system/bin/su; efficace solo per i nuovi processi.</string>
     <string name="settings_kernel_umount">Umount del kernel</string>
     <string name="settings_kernel_umount_summary">Comportamento di umount a livello di kernel controllato da KernelSU</string>
+    <string name="settings_fake_lock">Nascondi stato Bootloader</string>
+    <string name="settings_fake_lock_summary">Maschera lo stato di sblocco del Bootloader tramite resetprop per evitare il rilevamento</string>
+
     <string name="settings_mount_hide">Nascondi i mount</string>
     <string name="settings_mount_hide_summary">Nasconde i mount dei moduli dalla tabella /proc, preservandone la funzionalità</string>
 

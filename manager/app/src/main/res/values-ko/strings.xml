@@ -177,6 +177,9 @@
     <string name="settings_sucompat_summary">/system/bin/su를 통한 루트 권한 획득 허용 (새 프로세스 전용)</string>
     <string name="settings_kernel_umount">모듈 언마운트</string>
     <string name="settings_kernel_umount_summary">앱 프로필에 따라 커널에서 모듈을 언마운트합니다</string>
+    <string name="settings_fake_lock">Bootloader 상태 숨기기</string>
+    <string name="settings_fake_lock_summary">resetprop로 Bootloader 잠금 해제 상태를 위장하여 앱 감지를 방지합니다</string>
+
     <string name="settings_mount_hide">마운트 숨기기</string>
     <string name="settings_mount_hide_summary">/proc 출력에서 모듈 마운트를 숨기고 모듈 기능은 유지합니다</string>
 

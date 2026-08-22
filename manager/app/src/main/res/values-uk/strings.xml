@@ -141,6 +141,9 @@
     <string name="settings_sucompat_summary">Дозволяє програмам з правами Суперкористувача в профілі програми отримати оболонку суперкористувача шляхом виконання /system/bin/su; діє тільки для нових процесів.</string>
     <string name="settings_kernel_umount">Розмонтування ядра</string>
     <string name="settings_kernel_umount_summary">Поведінка розмонтування на рівні ядра, контрольована KernelSU</string>
+    <string name="settings_fake_lock">Приховати стан Bootloader</string>
+    <string name="settings_fake_lock_summary">Маскує стан розблокування Bootloader через resetprop, щоб уникнути виявлення</string>
+
     <string name="settings_mount_hide">Приховати mount</string>
     <string name="settings_mount_hide_summary">Приховує mount модулів з виводу /proc, зберігаючи функціональність</string>
 

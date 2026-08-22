@@ -131,6 +131,9 @@ Csatlakozzon a %2$s csatornánkhoz</string>
     <string name="settings_sucompat_summary">Lehetővé teszi az App Profile-ban Superuser engedéllyel rendelkező alkalmazások számára, hogy superuser shell-t kapjanak a /system/bin/su végrehajtásával; csak új folyamatoknál hatékony.</string>
     <string name="settings_kernel_umount">Kernel leválasztása</string>
     <string name="settings_kernel_umount_summary">KernelSU által vezérelt kernel szintű leválasztási viselkedés</string>
+    <string name="settings_fake_lock">Bootloader-állapot elrejtése</string>
+    <string name="settings_fake_lock_summary">A Bootloader feloldási állapotának álcázása resetprop-pal a detektálás elkerülése érdekében</string>
+
     <string name="settings_mount_hide">Mountok elrejtése</string>
     <string name="settings_mount_hide_summary">Elrejti a modul mountokat a /proc kimenetből, megtartva a funkciót</string>
 

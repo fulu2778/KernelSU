@@ -82,6 +82,9 @@
     <string name="settings_sucompat_summary">Preusmjeri /system/bin/su na ksud za aplikacije kojima je dodijeljeno dopuštenje Superuser u Profilu aplikacije; učinkovito samo za nove procese.</string>
     <string name="settings_kernel_umount">Kernel umount</string>
     <string name="settings_kernel_umount_summary">Ponašanje umount na razini kernela kontrolira KernelSU</string>
+    <string name="settings_fake_lock">Sakrij Bootloader status</string>
+    <string name="settings_fake_lock_summary">Maskira stanje otključanog Bootloader-a putem resetprop-a kako bi se izbjegla detekcija</string>
+
     <string name="settings_mount_hide">Sakrij mount</string>
     <string name="settings_mount_hide_summary">Sakriva mount modula iz /proc izlaza, čuvajući funkcionalnost</string>
 

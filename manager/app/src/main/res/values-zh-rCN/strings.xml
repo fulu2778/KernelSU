@@ -269,6 +269,9 @@
     <string name="settings_adb_root_summary">以 Root 权限运行 adbd 守护进程</string>
     <string name="settings_selinux_hide">隐藏 SELinux 修改</string>
     <string name="settings_selinux_hide_summary">阻止应用检测 SELinux 修改</string>
+    <string name="settings_fake_lock">隐藏 Bootloader 解锁状态</string>
+    <string name="settings_fake_lock_summary">通过 resetprop 伪装 Bootloader 解锁状态，防止应用检测</string>
+
     <string name="settings_selinux_hide_reboot_required">重启生效</string>
     <string name="settings_selinux_hide_failed">错误：%d</string>
     <string name="menu_sort">排序</string>
