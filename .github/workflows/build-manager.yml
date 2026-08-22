@@ -215,20 +215,14 @@ jobs:
           name: "mappings"
           path: "manager/app/build/outputs/mapping/release/"
 
-      # 发布 GitHub Release 供 Manager 内"检测更新"使用 (指向本 fork 仓库)
-      - name: Get version tag
-        id: version
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        run: |
-          APK=$(ls manager/app/build/outputs/apk/release/*.apk | head -1)
-          TAG=$(basename "$APK" | sed 's/KernelSU_v\(.*\)_[0-9]*-release.apk/v\1/')
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
+      # 发布 GitHub Release 供 Manager 内"检测更新"使用 (指向本 fork 仓库)。
+      # tag 用 commit sha (每次手动发布唯一); Manager 只解析 asset 文件名,
+      # 不依赖 tag 名。避免中间步骤输出求值为空被 Actions 移除。
       - name: Publish GitHub Release
         if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
+          tag_name: v${{ github.sha }}
           files: manager/app/build/outputs/apk/release/*.apk
           body: |
             Auto-built from main (${{ github.sha }})
