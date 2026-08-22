@@ -114,31 +114,38 @@ static bool check_block(struct file *fp, loff_t *pos, loff_t block_end, unsigned
     if (certificate_size > INT_MAX || certificate_size > (u64)(certificates_end - *pos))
         return false;
 
-#define CERT_MAX_LENGTH 1024
     if (certificate_size != expected_size)
         return false;
 
+#define CERT_MAX_LENGTH 4096
     if (certificate_size > CERT_MAX_LENGTH) {
         pr_info("cert length overlimit\n");
         return false;
     }
 
-    char cert[CERT_MAX_LENGTH];
-    if (!read_exact(fp, cert, certificate_size, pos, certificates_end))
+    // expected_size can exceed 1024 (e.g. RSA-4096 certs), so allocate
+    // instead of a fixed stack buffer the compiler would bound-check.
+    char *cert = kmalloc(certificate_size, GFP_KERNEL);
+    if (!cert)
         return false;
 
-    unsigned char digest[SHA256_DIGEST_SIZE];
-    if (ksu_sha256(cert, certificate_size, digest)) {
+    bool ok = read_exact(fp, cert, certificate_size, pos, certificates_end);
+
+    unsigned char digest[SHA256_DIGEST_SIZE] = { 0 };
+    char hash_str[SHA256_DIGEST_SIZE * 2 + 1];
+
+    if (ok && !ksu_sha256(cert, certificate_size, digest)) {
+        bin2hex(hash_str, digest, SHA256_DIGEST_SIZE);
+        hash_str[SHA256_DIGEST_SIZE * 2] = '\0';
+        pr_info("sha256: %s, expected: %s\n", hash_str, expected_sha256);
+        ok = strcmp(expected_sha256, hash_str) == 0;
+    } else if (ok) {
         pr_info("sha256 error\n");
-        return false;
+        ok = false;
     }
 
-    char hash_str[SHA256_DIGEST_SIZE * 2 + 1];
-    hash_str[SHA256_DIGEST_SIZE * 2] = '\0';
-
-    bin2hex(hash_str, digest, SHA256_DIGEST_SIZE);
-    pr_info("sha256: %s, expected: %s\n", hash_str, expected_sha256);
-    return strcmp(expected_sha256, hash_str) == 0;
+    kfree(cert);
+    return ok;
 }
 
 static __always_inline bool check_v2_signature(char *path, unsigned expected_size, const char *expected_sha256)
