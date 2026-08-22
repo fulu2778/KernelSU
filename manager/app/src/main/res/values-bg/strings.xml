@@ -143,11 +143,13 @@
     <string name="settings_sucompat_summary">Позволяет приложениям с предоставени права на Superuser в профила на приложението да получат superuser shell чрез изпълнение на /system/bin/su; в сила само за нови процеси.</string>
     <string name="settings_kernel_umount">Kernel umount</string>
     <string name="settings_kernel_umount_summary">Поведение за umount на ниво ядро, контролирано от KernelSU</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Скриване на статус Bootloader</string>
-    <string name="settings_fake_lock_summary">Маскира състоянието на отключване на Bootloader чрез resetprop, за да се избегне откриване</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">Скриване на mount</string>
-    <string name="settings_mount_hide_summary">Скрива mount модула от изхода на /proc, запазвайки функционалността</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
 
     <string name="processing">Обработва се…</string>
     <string name="refresh_pulling">Опънете надолу за да обновите</string>

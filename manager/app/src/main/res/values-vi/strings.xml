@@ -152,12 +152,14 @@
     <string name="settings_kernel_umount">Kernel umount</string>
     <string name="settings_kernel_umount_summary">Umount modules khỏi Kernel trong Hồ sơ ứng dụng.</string>
     <string name="settings_mount_hide">Ẩn mount</string>
-    <string name="settings_mount_hide_summary">Ẩn mount của module khỏi đầu ra /proc, giữ nguyên chức năng</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
 
     <string name="settings_selinux_hide">Ẩn sửa đổi SELinux</string>
     <string name="settings_selinux_hide_summary">Ngăn chặn các ứng dụng phát hiện các thay đổi của SELinux.</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Ẩn trạng thái Bootloader</string>
-    <string name="settings_fake_lock_summary">Giả mạo trạng thái mở khóa Bootloader qua resetprop để tránh bị phát hiện</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_selinux_hide_reboot_required">Khởi động lại để có hiệu lực!</string>
     <string name="settings_selinux_hide_failed">Lỗi: %d</string>

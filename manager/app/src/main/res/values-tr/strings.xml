@@ -143,11 +143,13 @@
     <string name="settings_sucompat_summary">Uygulama Profilinde Süper Kullanıcı izni verilen uygulamaların /system/bin/su yürütülerek süper kullanıcı kabuğu almasına izin verir; yalnızca yeni işlemler için etkilidir.</string>
     <string name="settings_kernel_umount">Kernel bağlantısını kes</string>
     <string name="settings_kernel_umount_summary">KernelSU tarafından kontrol edilen çekirdek seviyesinde bağlantı kesme davranışı.</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Bootloader durumunu gizle</string>
-    <string name="settings_fake_lock_summary">resetprop ile Bootloader kilit açma durumunu gizleyerek algılamayı önler</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">Mountları gizle</string>
-    <string name="settings_mount_hide_summary">/proc çıktısından modül mountları gizler, modül işlevini korur</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
 
     <string name="home_version_mismatch">Yönetici sürümü (%1$d) ile KernelSU sürücüsü sürümü (%2$d) uyuşmuyor.</string>
     <string name="reboot_soft">Soft restart</string>

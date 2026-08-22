@@ -98,11 +98,13 @@ Kanalımıza %2$s qoşulun</string>
     <string name="settings_sucompat_summary">Tətbiq Profilinə Superuser icazəsi verilmiş proqramları /system/bin/su vasitəsilə superuser shell əldə etməyə icazə verir; yalnız yeni proseslər üçün effektivdir.</string>
     <string name="settings_kernel_umount">Nüvə umount</string>
     <string name="settings_kernel_umount_summary">KernelSU tərəfindən idarə olunan nüvə səviyyəsində umount davranışı</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Bootloader statusunu gizlə</string>
-    <string name="settings_fake_lock_summary">resetprop ilə Bootloader kilid açma statusunu gizləyərək aşkarlanmanın qarşısını alır</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">Mount gizlə</string>
-    <string name="settings_mount_hide_summary">Modul mount-larını /proc çıxışından gizlədir, funksionallığı saxlayır</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
 
     <string name="profile_flags_desc_no_new_privs">Bu root profili kontekstində KernelSU vasitəsilə əlavə səlahiyyət yüksəltməsinin qarşısını alır.</string>
     <string name="install_force_backup">Orijinal imic kimi yedəklə</string>

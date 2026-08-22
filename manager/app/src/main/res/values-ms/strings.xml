@@ -37,11 +37,13 @@
     <string name="settings_sucompat_summary">Ubaḥ hala /system/bin/su ke ksud untuk aplikasi yang diberikan kebenaran Superuser dalam Profil Aplikasi; berkesan untuk proses baharu sahaja.</string>
     <string name="settings_kernel_umount">Umount kernel</string>
     <string name="settings_kernel_umount_summary">Tingkah laku umount peringkat kernel dikawal oleh KernelSU</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Sembunyi status Bootloader</string>
-    <string name="settings_fake_lock_summary">Menyamar status buka kunci Bootloader melalui resetprop untuk mengelakkan pengesanan</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">Sembunyi mount</string>
-    <string name="settings_mount_hide_summary">Menyembunyikan mount modul daripada output /proc, mengekalkan fungsi</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
 
     <string name="profile_flags_desc_no_new_privs">Menghalang peningkatan keistimewaan lanjut melalui KernelSU dalam konteks profil root ini.</string>
     <string name="install_force_backup">Sandarkan sebagai imej asal</string>

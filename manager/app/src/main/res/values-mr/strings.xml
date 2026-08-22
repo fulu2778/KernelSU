@@ -78,11 +78,13 @@
     <string name="settings_sucompat_summary">ॲप प्रोफाईलमध्ये सुपरयुझर परवानगी दिलेल्या ॲप्ससाठी /system/bin/su ला ksud वर पुनर्निर्देशित करा; फक्त नवीन प्रक्रियांसाठी प्रभावी.</string>
     <string name="settings_kernel_umount">कर्नल अनमाउंट</string>
     <string name="settings_kernel_umount_summary">KernelSU द्वारे नियंत्रित कर्नल-स्तरीय अनमाउंट वर्तन</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Bootloader स्थिती लपवा</string>
-    <string name="settings_fake_lock_summary">resetprop द्वारे Bootloader अनलॉक स्थिती शी नकली करते, शोध टाळण्यासाठी</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">माउंट लपवा</string>
-    <string name="settings_mount_hide_summary">/proc आउटपुटमधून मॉड्यूल माउंट लपवते, कार्यशीलता राखते</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
 
     <string name="profile_flags_desc_no_new_privs">या रूट प्रोफाइलच्या संदर्भात KernelSU द्वारे पुढील अधिकारवाढ रोखते.</string>
     <string name="install_force_backup">स्टॉक इमेज म्हणून बॅकअप करा</string>

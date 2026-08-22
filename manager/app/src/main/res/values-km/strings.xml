@@ -7,11 +7,13 @@
     <string name="settings_sucompat_summary">បញ្ជូន /system/bin/su ទៅកាន់ ksud សម្រាប់កម្មវិធីដែលបានទទួលសិទ្ធិ Superuser នៅក្នុងទម្រង់កម្មវិធី; មានប្រសិទ្ធភាពសម្រាប់ដំណើរការថ្មីប៉ុណ្ណោះ។</string>
     <string name="settings_kernel_umount">Kernel umount</string>
     <string name="settings_kernel_umount_summary">ឥរិយាបថ umount កម្រិតខឺណែលគ្រប់គ្រងដោយ KernelSU</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">លាក់ស្ថានភាព Bootloader</string>
-    <string name="settings_fake_lock_summary">ក្លែងបន្លំស្ថានភាពបើកសោ Bootloader តាមរយៈ resetprop ដើម្បីការពារការរកឃើញ</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">លាក់ mount</string>
-    <string name="settings_mount_hide_summary">លាក់ mount របស់ម៉ូឌុលពីលទ្ធផល /proc រក្សាមុខងារ</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
 
     <string name="profile_flags_desc_no_new_privs">ទប់ស្កាត់ការបង្កើនសិទ្ធិបន្ថែមតាមរយៈ KernelSU នៅក្នុងបរិបទនៃប្រវត្តិរូប root នេះ។</string>
     <string name="install_force_backup">បម្រុងទុកជារូបភាពដើម</string>

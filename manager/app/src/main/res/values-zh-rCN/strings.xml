@@ -175,7 +175,7 @@
     <string name="settings_kernel_umount">卸载模块（内核级）</string>
     <string name="settings_kernel_umount_summary">在内核给需要的应用卸载模块</string>
     <string name="settings_mount_hide">隐藏挂载记录</string>
-    <string name="settings_mount_hide_summary">不卸载模块，仅将模块挂载从挂载列表中隐藏，全局生效，模块功能完整保留</string>
+    <string name="settings_mount_hide_summary">仅隐藏模块的挂载条目，系统挂载不受影响，模块功能完整保留</string>
 
     <string name="module_install_prompt_with_name">将安装以下模块：%1$s</string>
     <string name="confirm">确认</string>
@@ -272,7 +272,7 @@
     <string name="settings_selinux_spoof">伪装 SELinux 审计</string>
     <string name="settings_selinux_spoof_summary">在 avc 审计日志中隐藏 ksu 域，避免应用看到 root 痕迹</string>
     <string name="settings_fake_lock">隐藏 BL 解锁状态</string>
-    <string name="settings_fake_lock_summary">将设备伪装为 BL 未解锁状态，避免应用检测；重启后自动生效</string>
+    <string name="settings_fake_lock_summary">将设备伪装为 BL 未解锁状态，避免应用检测</string>
 
     <string name="settings_selinux_hide_reboot_required">重启生效</string>
     <string name="settings_selinux_hide_failed">错误：%d</string>

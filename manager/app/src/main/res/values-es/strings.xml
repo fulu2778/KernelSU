@@ -129,11 +129,13 @@
     <string name="settings_sucompat_summary">Permite que las aplicaciones con permiso de Superusuario en el perfil de la aplicación obtengan un shell de superusuario ejecutando /system/bin/su; efectivo solo para nuevos procesos.</string>
     <string name="settings_kernel_umount">Desmontaje del kernel</string>
     <string name="settings_kernel_umount_summary">Comportamiento de desmontaje a nivel de kernel controlado por KernelSU</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Ocultar estado del Bootloader</string>
-    <string name="settings_fake_lock_summary">Disfraza el estado de desbloqueo del Bootloader mediante resetprop para evitar la detección</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">Ocultar montajes</string>
-    <string name="settings_mount_hide_summary">Oculta los montajes de los módulos de la salida de /proc, conservando la funcionalidad</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
 
     <string name="profile_flags_desc_no_new_privs">Impide una mayor escalada de privilegios mediante KernelSU dentro del contexto de este perfil root.</string>
     <string name="install_force_backup">Respaldar como imagen original</string>

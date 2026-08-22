@@ -140,11 +140,13 @@
     <string name="settings_sucompat_summary">อนุญาตให้เข้าถึงสิทธิ์รูท ผ่านทาง /system/bin/su ในกระบวนการใหม่</string>
     <string name="settings_kernel_umount">Umount โมดูล (ระดับเคอร์เนล)</string>
     <string name="settings_kernel_umount_summary">Unmount โมดูลจากเคอร์เนลในโปรไฟล์แอป</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">ซ่อนสถานะ Bootloader</string>
-    <string name="settings_fake_lock_summary">ปลอมแปลงสถานะปลดล็อก Bootloader ผ่าน resetprop เพื่อหลีกเลี่ยงการตรวจจับ</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">ซ่อน mount</string>
-    <string name="settings_mount_hide_summary">ซ่อน mount ของโมดูลจากเอาต์พุต /proc คงฟังก์ชันของโมดูล</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
 
     <string name="processing">กำลังประมวลผล…</string>
     <string name="refresh_pulling">ดึงลงเพื่อรีเฟรช</string>

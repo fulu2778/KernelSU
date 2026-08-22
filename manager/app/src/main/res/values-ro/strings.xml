@@ -130,11 +130,13 @@
     <string name="settings_sucompat_summary">Permite aplicațiilor cu permisiune de Superutilizator în Profilul Aplicației să obțină un shell de superutilizator executând /system/bin/su; eficient doar pentru procesele noi.</string>
     <string name="settings_kernel_umount">Demontare kernel</string>
     <string name="settings_kernel_umount_summary">Comportament de demontare la nivel de kernel controlat de KernelSU</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask the ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Ascunde starea Bootloader</string>
-    <string name="settings_fake_lock_summary">Deghizează starea de deblocare a Bootloader prin resetprop pentru a preveni detectarea</string>
+    <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
     <string name="settings_mount_hide">Ascunde mounturile</string>
-    <string name="settings_mount_hide_summary">Ascunde mounturile modulelor din ieșirea /proc, păstrând funcționalitatea</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
 
     <string name="profile_flags_desc_no_new_privs">Împiedică escaladarea suplimentară a privilegiilor prin KernelSU în contextul acestui profil root.</string>
     <string name="install_force_backup">Salvează ca imagine originală</string>
