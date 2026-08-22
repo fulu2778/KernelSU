@@ -24,6 +24,7 @@
 #include "mount_hide.h"
 #include "policy/feature.h"
 #include "infra/symbol_resolver.h"
+#include "ksu.h"
 #include "klog.h"
 
 #include <linux/kernel.h>
@@ -54,19 +55,40 @@ static struct dentry *modules_dentry __read_mostly;
 static struct delayed_work modules_dentry_work;
 #define MODULES_DENTRY_PATH "/data/adb/modules"
 
+static void renumber_visible_mounts(void);
+
 static void modules_dentry_resolve(struct work_struct *w)
 {
     struct path path;
     static int attempts;
 
-    if (kern_path(MODULES_DENTRY_PATH, LOOKUP_FOLLOW, &path) == 0) {
-        struct dentry *old = xchg(&modules_dentry, path.dentry);
-        if (old)
-            dput(old);
-        mntput(path.mnt); /* 只释放 mnt 引用, dentry 引用移交缓存 */
+    pr_info("mount_hide: dentry resolve work fired (attempt %d)\n", attempts + 1);
+    {
+        const struct cred *saved = NULL;
+        int kret;
+
+        /* kworker 的 SELinux 域无 /data/adb search 权限 (-EACCES),
+         * 用 ksu 域全权 creds 包裹查找 */
+        if (ksu_cred)
+            saved = override_creds(ksu_cred);
+        kret = kern_path(MODULES_DENTRY_PATH, LOOKUP_FOLLOW, &path);
+        if (saved)
+            revert_creds(saved);
+
+        pr_info("mount_hide: kern_path -> %d\n", kret);
+        if (kret != 0)
+            goto retry;
+        {
+            struct dentry *old = xchg(&modules_dentry, path.dentry);
+            if (old)
+                dput(old);
+            mntput(path.mnt); /* 只释放 mnt 引用, dentry 引用移交缓存 */
+        }
         pr_info("mount_hide: fast path armed (%s)\n", MODULES_DENTRY_PATH);
+        renumber_visible_mounts(); /* 模块挂载已就位, 可见条目 ID 连续化 */
         return;
     }
+retry:
     if (++attempts < 12) /* 每 5s 重试, 1 分钟后放弃 */
         schedule_delayed_work(&modules_dentry_work, msecs_to_jiffies(5000));
 }
@@ -93,7 +115,8 @@ static const char *const sys_partitions[] = {
     "/system/", "/product/", "/vendor/", "/system_ext/", "/odm/", "/vendor_dlkm/", "/system_dlkm/",
 };
 
-static bool mount_root_is_sus_mount(struct vfsmount *mnt)
+/* 判定核心: 不含 root 放行 (重编号扫描需要无差别过滤) */
+static bool mount_is_sus_raw(struct vfsmount *mnt)
 {
     char *buf;
     const char *path, *root;
@@ -102,10 +125,6 @@ static bool mount_root_is_sus_mount(struct vfsmount *mnt)
     int i;
 
     if (unlikely(!mnt || !mnt->mnt_root || !ksu_mount_hide_enabled || !mount_hide_buf))
-        return false;
-
-    /* root 读者(自己人)直接放行: 调试可见真实挂载, 也省掉其全部开销 */
-    if (uid_eq(current_uid(), GLOBAL_ROOT_UID))
         return false;
 
     /* 判据0 (快路径, 纯指针): bind mount 的 mnt_root 即源文件 dentry,
@@ -149,23 +168,147 @@ out:
     return hit;
 }
 
+static bool mount_root_is_sus_mount(struct vfsmount *mnt)
+{
+    /* root 读者(自己人)直接放行: 调试可见真实挂载, 也省掉其全部开销 */
+    if (uid_eq(current_uid(), GLOBAL_ROOT_UID))
+        return false;
+    return mount_is_sus_raw(mnt);
+}
+
+/* ---- 挂载 ID 连续性 (反"挂载间隙"检测) ----
+ * 检测方解析 /proc/<pid>/mountinfo, 发现 mnt_id (或 shared:组ID) 跳号即判定
+ * 存在被隐藏的挂载。开机后内核自读一遍 mountinfo: pre_handler 按无差别
+ * 过滤逐条记录可见挂载, 然后按扫描顺序把可见条目重编号为连续的
+ * 1..N (mnt_id) 与 1..M (mnt_group_id), 输出不再有空洞。
+ * struct mount 偏移基于 6.6 arm64 + CONFIG_RANDSTRUCT_NONE 手工推导,
+ * 写入带数值护栏, 失配即放弃 (fail-safe)。 */
+#define MOUNT_OFF_MNT 32
+#define MOUNT_OFF_MNT_ID 288
+#define MOUNT_OFF_MNT_GROUP_ID 292
+#define MOUNT_ID_SANITY_MAX (1 << 20)
+
+static bool renumber_active;
+static struct vfsmount *renumber_seen[2048];
+static size_t renumber_count;
+
+static int mount_id_of(struct vfsmount *mnt)
+{
+    return *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_ID);
+}
+
+static void set_mount_id_of(struct vfsmount *mnt, int id)
+{
+    *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_ID) = id;
+}
+
+static int group_id_of(struct vfsmount *mnt)
+{
+    return *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_GROUP_ID);
+}
+
+static void set_group_id_of(struct vfsmount *mnt, int id)
+{
+    *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_GROUP_ID) = id;
+}
+
+static void renumber_visible_mounts(void)
+{
+    struct file *fp;
+    char *buf;
+    loff_t pos = 0;
+    size_t i;
+    int next_id = 1;
+    int old_gid[128], new_gid[128];
+    int gid_n = 0;
+    bool ok = true;
+
+    renumber_count = 0;
+    WRITE_ONCE(renumber_active, true);
+    fp = filp_open("/proc/self/mountinfo", O_RDONLY, 0);
+    if (IS_ERR(fp)) {
+        WRITE_ONCE(renumber_active, false);
+        pr_warn("mount_hide: renumber scan open failed\n");
+        return;
+    }
+    buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
+    if (!buf) {
+        filp_close(fp, 0);
+        WRITE_ONCE(renumber_active, false);
+        return;
+    }
+    while (kernel_read(fp, buf, PAGE_SIZE, &pos) > 0)
+        ;
+    kfree(buf);
+    filp_close(fp, 0);
+    WRITE_ONCE(renumber_active, false);
+
+    if (!renumber_count)
+        return;
+
+    for (i = 0; i < renumber_count; i++) {
+        int id = mount_id_of(renumber_seen[i]);
+
+        if (id <= 0 || id > MOUNT_ID_SANITY_MAX) {
+            ok = false; /* 偏移失配: 放弃, 不破坏现场 */
+            break;
+        }
+        set_mount_id_of(renumber_seen[i], next_id++);
+    }
+
+    if (ok) {
+        for (i = 0; i < renumber_count; i++) {
+            int g = group_id_of(renumber_seen[i]);
+            int j;
+
+            if (g <= 0 || g > MOUNT_ID_SANITY_MAX)
+                continue;
+            for (j = 0; j < gid_n; j++)
+                if (old_gid[j] == g)
+                    break;
+            if (j == gid_n) {
+                if (gid_n >= 128)
+                    return; /* 组过多: id 已重编号, 组保持原值 */
+                old_gid[gid_n] = g;
+                new_gid[gid_n] = gid_n + 1;
+                gid_n++;
+            }
+            set_group_id_of(renumber_seen[i], new_gid[j]);
+        }
+        pr_info("mount_hide: renumbered %zu mounts (ids 1..%d, %d groups)\n", renumber_count, next_id - 1, gid_n);
+    } else {
+        pr_warn("mount_hide: mount id sanity check failed, renumber aborted\n");
+    }
+}
+
 /* kprobe pre_handler: x86-64: rdi=seq_file*, rsi=vfsmnt* */
 static int mount_hide_pre(struct kprobe *p, struct pt_regs *regs)
 {
-    struct vfsmount *mnt =
+    struct vfsmount *mnt;
+    bool redirect;
+
 #ifdef __x86_64__
-        (struct vfsmount *)regs->si;
-    if (mount_root_is_sus_mount(mnt)) {
-        regs->ip = (unsigned long)mount_hide_skip_show;
-        return 1; /* 跳过原指令单步，直接执行 trampoline */
-    }
+    mnt = (struct vfsmount *)regs->si;
 #else
-        (struct vfsmount *)regs->regs[1];
-    if (mount_root_is_sus_mount(mnt)) {
+    mnt = (struct vfsmount *)regs->regs[1];
+#endif
+
+    if (unlikely(READ_ONCE(renumber_active))) {
+        /* 重编号扫描: 按无差别过滤记录可见挂载 (输出丢弃) */
+        if (!mount_is_sus_raw(mnt) && renumber_count < ARRAY_SIZE(renumber_seen))
+            renumber_seen[renumber_count++] = mnt;
+        return 0;
+    }
+
+    redirect = mount_root_is_sus_mount(mnt);
+    if (redirect) {
+#ifdef __x86_64__
+        regs->ip = (unsigned long)mount_hide_skip_show;
+#else
         regs->pc = (unsigned long)mount_hide_skip_show;
+#endif
         return 1; /* 跳过原指令单步，直接执行 trampoline */
     }
-#endif
     return 0;
 }
 
@@ -199,6 +342,10 @@ static int ksu_mount_hide_feature_set(u64 value)
 {
     ksu_mount_hide_enabled = value != 0;
     pr_info("mount_hide: set to %d\n", ksu_mount_hide_enabled);
+    if (value) {
+        /* 重新启用即重扫重编号 (进程上下文, 同一 work 顺带刷新 dentry 缓存) */
+        schedule_delayed_work(&modules_dentry_work, msecs_to_jiffies(1000));
+    }
     return 0;
 }
 

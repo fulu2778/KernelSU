@@ -300,6 +300,17 @@ pub fn set_feature(id: &str, value: u64) -> Result<()> {
 
     set_kernel_feature(feature_id, value)?;
 
+    // 持久化: feature set 同时写 config, 重启后 init_features 按此重放。
+    // 否则仅改内核内存态, 重启即恢复默认 (mount_hide 默认开启, 用户
+    // 关闭后下次开机又被顶回)。
+    {
+        let mut features = load_binary_config().unwrap_or_default();
+        features.insert(feature_id as u32, value);
+        if let Err(e) = save_binary_config(&features) {
+            log::warn!("Failed to persist feature {id}: {e}");
+        }
+    }
+
     println!(
         "Feature '{}' set to {value} ({})",
         feature_id.name(),

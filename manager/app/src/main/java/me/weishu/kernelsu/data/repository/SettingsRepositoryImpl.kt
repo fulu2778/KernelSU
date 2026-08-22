@@ -184,7 +184,9 @@ class SettingsRepositoryImpl : SettingsRepository {
 
     override fun isMountHideEnabled(): Boolean = Natives.isMountHideEnabled()
 
-    override fun setMountHideEnabled(enabled: Boolean): Int = Natives.setMountHideEnabled(enabled)
+    override fun setMountHideEnabled(enabled: Boolean): Int =
+        // 走 ksud feature set 持久化到 .feature_config, 否则重启后被重放回默认值
+        if (execKsud("feature set mount_hide ${if (enabled) 1 else 0}", true)) 0 else -1
 
     override suspend fun getSulogStatus(): String = getFeatureStatus("sulog")
 
