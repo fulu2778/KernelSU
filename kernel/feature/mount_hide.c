@@ -54,10 +54,39 @@ static struct dentry *modules_dentry __read_mostly;
 static struct delayed_work modules_dentry_work;
 #define MODULES_DENTRY_PATH "/data/adb/modules"
 
+/* 系统分区: 挂载点(而非 root) 命中这些带尾斜杠前缀，天然排除分区根本身
+ * (如 /system 不命中 /system/)。模块挂载点必然落在只读系统分区内的文件上,
+ * 这是无法伪装的结构性特征, 与 mountsource/config 无关。 */
+static const char *const sys_partitions[] = {
+    "/system/", "/product/", "/vendor/", "/system_ext/", "/odm/", "/vendor_dlkm/", "/system_dlkm/",
+};
+
+/* 系统分区真实 st_dev 缓存 (stat 一致性层改写目标), delayed work 填充 */
+static u32 sys_part_devs[ARRAY_SIZE(sys_partitions)];
+
 static void modules_dentry_resolve(struct work_struct *w)
 {
     struct path path;
     static int attempts;
+
+    /* 缓存系统分区真实 dev (供 stat 一致性层改写), 首轮即完成, 与 /data 无关 */
+    {
+        int i;
+
+        for (i = 0; i < ARRAY_SIZE(sys_partitions); i++) {
+            char buf[32];
+            size_t len = strlen(sys_partitions[i]) - 1; /* 去尾斜杠 */
+
+            if (sys_part_devs[i] || len >= sizeof(buf))
+                continue;
+            memcpy(buf, sys_partitions[i], len);
+            buf[len] = '\0';
+            if (kern_path(buf, LOOKUP_FOLLOW, &path) == 0) {
+                sys_part_devs[i] = path.mnt->mnt_sb->s_dev;
+                path_put(&path);
+            }
+        }
+    }
 
     if (kern_path(MODULES_DENTRY_PATH, LOOKUP_FOLLOW, &path) == 0) {
         struct dentry *old = xchg(&modules_dentry, path.dentry);
@@ -86,12 +115,62 @@ static int mount_hide_skip_show(struct seq_file *m, struct vfsmount *vfsmnt)
     return 0;
 }
 
-/* 系统分区: 挂载点(而非 root) 命中这些带尾斜杠前缀，天然排除分区根本身
- * (如 /system 不命中 /system/)。模块挂载点必然落在只读系统分区内的文件上,
- * 这是无法伪装的结构性特征, 与 mountsource/config 无关。 */
-static const char *const sys_partitions[] = {
-    "/system/", "/product/", "/vendor/", "/system_ext/", "/odm/", "/vendor_dlkm/", "/system_dlkm/",
+/* ---- stat 一致性层: 修补"挂载间隙" ----
+ * 隐藏挂载列表后, 落在系统分区路径上的 bind/overlay 文件 stat 出的
+ * st_dev 仍是源文件系统(如 /data)的设备号, 与"列表里没有该挂载"矛盾,
+ * 构成可检测的挂载间隙。kretprobe 挂 vfs_statx (覆盖 stat/lstat/statx/
+ * fstatat 家族), 对非 root 读者: 路径命中系统分区前缀且 dev 与分区
+ * 真实 dev 不符时, 改写为分区 dev, 使 stat 结果与过滤后的挂载列表
+ * 处于同一世界观。分区的真实 dev 由 delayed work 开机后缓存。 */
+static struct kretprobe kr_statx;
+
+struct statx_ctx {
+    const char *name;
+    struct kstat *stat;
 };
+
+static int statx_entry(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+    struct statx_ctx *ctx = (struct statx_ctx *)ri->data;
+    struct filename *fn;
+    struct kstat *stat;
+
+    /* 快路径: 功能关闭或 root 读者(自己人)时跳过 ret handler */
+    if (!ksu_mount_hide_enabled || uid_eq(current_uid(), GLOBAL_ROOT_UID))
+        return 1;
+
+#ifdef __x86_64__
+    fn = (struct filename *)regs->si;
+    stat = (struct kstat *)regs->cx;
+#else
+    fn = (struct filename *)regs->regs[1];
+    stat = (struct kstat *)regs->regs[3];
+#endif
+    ctx->name = fn ? fn->name : NULL;
+    ctx->stat = stat;
+    return 0;
+}
+
+static int statx_ret(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+    struct statx_ctx *ctx = (struct statx_ctx *)ri->data;
+    const char *name = ctx->name;
+    struct kstat *stat = ctx->stat;
+    int i;
+
+    if (!name || !stat || regs_return_value(regs) != 0)
+        return 0;
+
+    for (i = 0; i < ARRAY_SIZE(sys_partitions); i++) {
+        size_t plen = strlen(sys_partitions[i]);
+
+        if (strncmp(name, sys_partitions[i], plen) == 0 && sys_part_devs[i] && stat->dev != sys_part_devs[i]) {
+            stat->dev = sys_part_devs[i];
+            break;
+        }
+    }
+    return 0;
+}
 
 static bool mount_root_is_sus_mount(struct vfsmount *mnt)
 {
@@ -243,6 +322,18 @@ int __init ksu_mount_hide_init(void)
         goto err_vfsstat;
     }
 
+    /* stat 一致性层 (vfs_statx 为 static 符号, 走 kallsyms 定位) */
+    kr_statx.kp.symbol_name = "vfs_statx";
+    kr_statx.entry_handler = statx_entry;
+    kr_statx.handler = statx_ret;
+    kr_statx.data_size = sizeof(struct statx_ctx);
+    kr_statx.maxactive = 64;
+    ret = register_kretprobe(&kr_statx);
+    if (ret) {
+        pr_warn("mount_hide: register vfs_statx kretprobe failed: %d, stat spoofing degraded\n", ret);
+        kr_statx.kp.symbol_name = NULL;
+    }
+
     ksu_register_feature_handler(&mount_hide_handler);
 
     INIT_DELAYED_WORK(&modules_dentry_work, modules_dentry_resolve);
@@ -270,6 +361,10 @@ void __exit ksu_mount_hide_exit(void)
     mount_hide_kp_teardown(&kp_vfsstat);
     mount_hide_kp_teardown(&kp_vfsmnt);
     mount_hide_kp_teardown(&kp_mountinfo);
+    if (kr_statx.kp.symbol_name) {
+        unregister_kretprobe(&kr_statx);
+        kr_statx.kp.symbol_name = NULL;
+    }
     if (mount_hide_buf) {
         free_percpu(mount_hide_buf);
         mount_hide_buf = NULL;
