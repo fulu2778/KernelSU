@@ -6,14 +6,14 @@ use android_logger::Config;
 use log::{LevelFilter, error, info};
 
 use crate::boot_patch::{BootPatchArgs, BootRestoreArgs};
+#[cfg(target_os = "android")]
+use crate::fakelock;
 use crate::lkm_image::BootPatchV2Args;
 use crate::module::regenerate_preinit_rc;
 use crate::{
-    apk_sign, assets, debug, defs, init_event, ksu_uapi, ksucalls, module,
-    module_config, sulog, utils,
+    apk_sign, assets, debug, defs, init_event, ksu_uapi, ksucalls, module, module_config, sulog,
+    utils,
 };
-#[cfg(target_os = "android")]
-use crate::fakelock;
 
 /// KernelSU userspace cli
 #[derive(Parser, Debug)]

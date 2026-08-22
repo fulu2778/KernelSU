@@ -23,7 +23,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::defs;
-use crate::feature::{set_kernel_feature, FeatureId};
+use crate::feature::{FeatureId, set_kernel_feature};
 use prop_rs_android::resetprop::ResetProp;
 use prop_rs_android::sys_prop;
 
@@ -95,12 +95,11 @@ fn apply_props() -> Result<()> {
         }
     }
     for key in BOOT_KEYS {
-        if let Some(val) = rp.get(key) {
-            if val.contains("recovery") {
-                if let Err(e) = rp.set(key, "unknown") {
-                    warn!("fakelock: patch bootmode {key} failed: {e}");
-                }
-            }
+        if let Some(val) = rp.get(key)
+            && val.contains("recovery")
+            && let Err(e) = rp.set(key, "unknown")
+        {
+            warn!("fakelock: patch bootmode {key} failed: {e}");
         }
     }
     info!("fakelock: applied disguise to {set} props");
@@ -126,7 +125,10 @@ pub fn disable() -> Result<()> {
 }
 
 pub fn status() {
-    println!("FakeLock: {}", if is_enabled() { "enabled" } else { "disabled" });
+    println!(
+        "FakeLock: {}",
+        if is_enabled() { "enabled" } else { "disabled" }
+    );
     println!("Flag: {FLAG_PATH}");
 }
 

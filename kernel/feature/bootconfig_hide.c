@@ -168,8 +168,7 @@ static void bootconfig_snapshot(struct work_struct *w)
     }
 
     smp_store_release(&fake_bootconfig, fake);
-    pr_info("bootconfig_hide: snapshot ready (%zu bytes, enabled=%d)\n", fake_len - 1,
-            ksu_bootconfig_hide_enabled);
+    pr_info("bootconfig_hide: snapshot ready (%zu bytes)\n", fake_len - 1);
 }
 
 static int ksu_bootconfig_hide_feature_get(u64 *value)
