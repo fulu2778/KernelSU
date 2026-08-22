@@ -72,8 +72,11 @@ static void modules_dentry_resolve(struct work_struct *w)
 }
 
 /* pre_handler 运行于原子上下文(本 CPU 关抢占)，per-cpu 双缓冲替代
- * 每条目 16KB 的 GFP_ATOMIC 分配；show_* 入口不可能同 CPU 嵌套 */
-static DEFINE_PER_CPU(char[2][MOUNT_HIDE_BUF_SIZE], mount_hide_buf);
+ * 每条目 16KB 的 GFP_ATOMIC 分配；show_* 入口不可能同 CPU 嵌套。
+ * 注意: 不能用静态 DEFINE_PER_CPU——模块 percpu 段预留区
+ * (PERCPU_MODULE_RESERVE) 仅 8KB, 16KB 缓冲会令 insmod 直接
+ * -ENOMEM 失败; 改为 init 时 __alloc_percpu 走动态 percpu 池。 */
+static char __percpu *mount_hide_buf; /* 2 * MOUNT_HIDE_BUF_SIZE */
 
 static struct kprobe kp_mountinfo, kp_vfsmnt, kp_vfsstat;
 
@@ -92,13 +95,13 @@ static const char *const sys_partitions[] = {
 
 static bool mount_root_is_sus_mount(struct vfsmount *mnt)
 {
-    char(*buf)[MOUNT_HIDE_BUF_SIZE];
+    char *buf;
     const char *path, *root;
     struct dentry *cached;
     bool hit = false;
     int i;
 
-    if (unlikely(!mnt || !mnt->mnt_root || !ksu_mount_hide_enabled))
+    if (unlikely(!mnt || !mnt->mnt_root || !ksu_mount_hide_enabled || !mount_hide_buf))
         return false;
 
     /* root 读者(自己人)直接放行: 调试可见真实挂载, 也省掉其全部开销 */
@@ -119,12 +122,12 @@ static bool mount_root_is_sus_mount(struct vfsmount *mnt)
             return true;
     }
 
-    buf = get_cpu_var(mount_hide_buf);
+    buf = get_cpu_ptr(mount_hide_buf);
 
     /* 判据1 (结构性): d_path 沿挂载边界返回挂载点全路径。
 	 * 系统自身挂载点全是分区根(/system /product /vendor...), 不命中;
 	 * 任何覆盖系统文件的模块挂载(bind / overlay / 任意 mountsource)命中。 */
-    path = d_path(&(struct path){ .mnt = mnt, .dentry = mnt->mnt_root }, buf[0], MOUNT_HIDE_BUF_SIZE);
+    path = d_path(&(struct path){ .mnt = mnt, .dentry = mnt->mnt_root }, buf, MOUNT_HIDE_BUF_SIZE);
     if (likely(!IS_ERR(path))) {
         for (i = 0; i < ARRAY_SIZE(sys_partitions); i++) {
             if (strncmp(path, sys_partitions[i], strlen(sys_partitions[i])) == 0) {
@@ -137,12 +140,12 @@ static bool mount_root_is_sus_mount(struct vfsmount *mnt)
     /* 判据2 (兜底): root 字段(dentry_path_raw 不跨挂载边界)命中
 	 * KSU 模块挂载前缀 /adb/modules, 覆盖传统 bind staging 与
 	 * /apex 内文件覆盖(如 zygisk dex2oat) */
-    root = dentry_path_raw(mnt->mnt_root, buf[1], MOUNT_HIDE_BUF_SIZE);
+    root = dentry_path_raw(mnt->mnt_root, buf + MOUNT_HIDE_BUF_SIZE, MOUNT_HIDE_BUF_SIZE);
     if (likely(!IS_ERR(root)) && strncmp(root, MOUNT_HIDE_PREFIX, sizeof(MOUNT_HIDE_PREFIX) - 1) == 0)
         hit = true;
 
 out:
-    put_cpu_var(mount_hide_buf);
+    put_cpu_ptr(mount_hide_buf);
     return hit;
 }
 
@@ -216,11 +219,18 @@ int __init ksu_mount_hide_init(void)
         return 0;
     }
 
+    /* 双缓冲必须先于 kprobe 注册就绪: 动态 percpu 池分配, 见变量声明处注释 */
+    mount_hide_buf = __alloc_percpu(2 * MOUNT_HIDE_BUF_SIZE, __alignof__(u64));
+    if (!mount_hide_buf) {
+        pr_warn("mount_hide: percpu buffer alloc failed, feature degraded\n");
+        return 0;
+    }
+
     ret = mount_hide_kp_setup(&kp_mountinfo, "show_mountinfo");
     if (ret) {
         pr_warn("mount_hide: register show_mountinfo failed: %d\n", ret);
         /* 非 fatal: 特性降级，不影响 KSU 主体 */
-        return 0;
+        goto err_percpu;
     }
     ret = mount_hide_kp_setup(&kp_vfsmnt, "show_vfsmnt");
     if (ret) {
@@ -245,6 +255,9 @@ err_vfsstat:
     mount_hide_kp_teardown(&kp_vfsmnt);
 err_vfsmnt:
     mount_hide_kp_teardown(&kp_mountinfo);
+err_percpu:
+    free_percpu(mount_hide_buf);
+    mount_hide_buf = NULL;
     return 0;
 }
 
@@ -257,5 +270,9 @@ void __exit ksu_mount_hide_exit(void)
     mount_hide_kp_teardown(&kp_vfsstat);
     mount_hide_kp_teardown(&kp_vfsmnt);
     mount_hide_kp_teardown(&kp_mountinfo);
+    if (mount_hide_buf) {
+        free_percpu(mount_hide_buf);
+        mount_hide_buf = NULL;
+    }
     pr_info("mount_hide: deactivated\n");
 }
