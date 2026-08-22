@@ -180,6 +180,11 @@ class SettingsRepositoryImpl : SettingsRepository {
 
     override fun setSelinuxHideEnabled(enabled: Boolean): Int = Natives.setSelinuxHideEnabled(enabled)
 
+    override suspend fun isSelinuxSpoofEnabled(): Boolean = getFeaturePersistValue("selinux_spoof") == 1L
+
+    override fun setSelinuxSpoofEnabled(enabled: Boolean): Boolean =
+        execKsud("feature set selinux_spoof ${if (enabled) 1 else 0}", true)
+
     override suspend fun getMountHideStatus(): String = getFeatureStatus("mount_hide")
 
     override fun isMountHideEnabled(): Boolean = Natives.isMountHideEnabled()

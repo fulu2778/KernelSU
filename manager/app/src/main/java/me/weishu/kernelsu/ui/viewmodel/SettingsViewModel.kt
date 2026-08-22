@@ -63,6 +63,7 @@ class SettingsViewModel(
             val isKernelUmountEnabled = repo.isKernelUmountEnabled()
             val selinuxHideStatus = repo.getSelinuxHideStatus()
             val isSelinuxHideEnabled = repo.isSelinuxHideEnabled()
+            val isSelinuxSpoofEnabled = repo.isSelinuxSpoofEnabled()
             val sulogStatus = repo.getSulogStatus()
             val isSulogEnabled = repo.getSulogPersistValue() == 1L
             val adbRootStatus = repo.getAdbRootStatus()
@@ -103,6 +104,7 @@ class SettingsViewModel(
                     isKernelUmountEnabled = isKernelUmountEnabled,
                     selinuxHideStatus = selinuxHideStatus,
                     isSelinuxHideEnabled = isSelinuxHideEnabled,
+                    isSelinuxSpoofEnabled = isSelinuxSpoofEnabled,
                     sulogStatus = sulogStatus,
                     isSulogEnabled = isSulogEnabled,
                     mountHideStatus = mountHideStatus,
@@ -288,6 +290,13 @@ class SettingsViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             FakeLockRepository().setEnabled(enabled)
             _uiState.update { it.copy(isFakeLockEnabled = enabled) }
+        }
+    }
+
+    fun setSelinuxSpoofEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repo.setSelinuxSpoofEnabled(enabled)
+            _uiState.update { it.copy(isSelinuxSpoofEnabled = enabled) }
         }
     }
 

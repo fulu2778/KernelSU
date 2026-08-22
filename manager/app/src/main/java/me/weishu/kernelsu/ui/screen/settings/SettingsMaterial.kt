@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ContactPage
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.GppGood
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.ElectricalServices
@@ -226,6 +227,16 @@ fun SettingPagerMaterial(
                                 enabled = uiState.selinuxHideStatus == "supported",
                                 checked = uiState.isSelinuxHideEnabled,
                                 onCheckedChange = actions.onSetSelinuxHideEnabled
+                            )
+                        },
+                        {
+                            SegmentedSwitchItem(
+                                icon = Icons.Filled.VerifiedUser,
+                                title = stringResource(id = R.string.settings_selinux_spoof),
+                                summary = stringResource(id = R.string.settings_selinux_spoof_summary),
+                                enabled = uiState.isFullFeatured,
+                                checked = uiState.isSelinuxSpoofEnabled,
+                                onCheckedChange = actions.onSetSelinuxSpoofEnabled
                             )
                         },
                         {

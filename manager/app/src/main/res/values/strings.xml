@@ -198,6 +198,8 @@
     <string name="settings_mount_hide_summary">Unlike umount, nothing is detached: module mounts are only hidden from the mount list, keeping modules working for all apps</string>
     <string name="settings_selinux_hide">Hide SELinux modification</string>
     <string name="settings_selinux_hide_summary">Prevent applications from detecting SELinux modifications</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask ksu domain in avc audit logs so apps cannot see root traces</string>
     <string name="settings_fake_lock">Hide unlock status</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
     <string name="settings_selinux_hide_reboot_required">Reboot to take effect</string>
