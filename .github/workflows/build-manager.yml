@@ -1,5 +1,8 @@
 name: Build Manager
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [ "main", "dev", "ci" ]
@@ -210,6 +213,24 @@ jobs:
         with:
           name: "mappings"
           path: "manager/app/build/outputs/mapping/release/"
+
+      # 发布 GitHub Release 供 Manager 内"检测更新"使用 (指向本 fork 仓库)
+      - name: Get version tag
+        id: version
+        if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+        run: |
+          APK=$(ls manager/app/build/outputs/apk/release/*.apk | head -1)
+          TAG=$(basename "$APK" | sed 's/KernelSU_v\(.*\)_[0-9]*-release.apk/v\1/')
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          files: manager/app/build/outputs/apk/release/*.apk
+          body: |
+            Auto-built from main (${{ github.sha }})
 
   repack-manager:
     needs: [build-manager, build-ksud, generate-key]
