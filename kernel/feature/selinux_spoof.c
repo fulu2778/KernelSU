@@ -39,10 +39,6 @@
 
 #include "avc.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
-extern struct selinux_state selinux_state;
-#endif
-
 static bool ksu_selinux_spoof_enabled __read_mostly;
 static bool spoof_inited __read_mostly;
 
@@ -58,11 +54,7 @@ static sid_to_context_t sid_to_context_fn;
 
 static int __nocfi call_sid_to_context(u32 sid, char **scontext, u32 *len)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
     return sid_to_context_fn(sid, scontext, len);
-#else
-    return sid_to_context_fn(&selinux_state, sid, scontext, len);
-#endif
 }
 
 static int avc_cb_pre(struct kprobe *p, struct pt_regs *regs)
