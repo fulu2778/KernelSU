@@ -99,10 +99,8 @@ static int ksu_selinux_spoof_feature_set(u64 value)
         char *ctx = NULL;
         u32 len = 0;
 
-        if (security_secctx_to_secid(KERNEL_SU_CONTEXT,
-                                     strlen(KERNEL_SU_CONTEXT), &ksu_sid) ||
-            security_secctx_to_secid("u:r:priv_app:s0", strlen("u:r:priv_app:s0"),
-                                     &priv_app_sid)) {
+        if (security_secctx_to_secid(KERNEL_SU_CONTEXT, strlen(KERNEL_SU_CONTEXT), &ksu_sid) ||
+            security_secctx_to_secid("u:r:priv_app:s0", strlen("u:r:priv_app:s0"), &priv_app_sid)) {
             pr_warn("selinux_spoof: sid resolve failed (policy loaded?)\n");
             return -EINVAL;
         }
