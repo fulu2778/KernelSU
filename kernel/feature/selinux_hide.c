@@ -188,6 +188,8 @@ static ssize_t my_write_access(struct file *file, char *buf, size_t size)
     security_compute_av_user(&fake_state, ssid, tsid, tclass, &avd);
 #endif
 
+    // stock reads 1; a loader load_policy may have bumped the backup before we load
+    avd.seqno = 1;
     length = scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%x %x %x %x %u %x", avd.allowed, 0xffffffff, avd.auditallow,
                        avd.auditdeny, avd.seqno, avd.flags);
 out:
@@ -269,18 +271,21 @@ static void initialize_fake_status()
 
     struct selinux_kernel_status *new_status = page_address(new_page);
     memcpy(new_status, status, sizeof(*status));
-    /* 伪装回出厂计数: KSU 的 apply_kernelsu_rules -> reset_avc_cache 会
-	 * 顶高真实页的 sequence/policyload, 直接 memcpy 会向应用泄露
-	 * "策略被动过"。出厂值随内核版本不同(6.10 起初始加载计入计数)。 */
+    if (ksu_late_loaded) {
+        // In late_load mode the loader may have reloaded sepolicy before us,
+        // so the captured page is not stock. Serve what a stock boot ends
+        // with instead: creation sentinel below 6.10, one load plus one
+        // setenforce above.
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
-    new_status->sequence = 4;
-    new_status->policyload = 1;
+        new_status->sequence = 4;
+        new_status->policyload = 1;
 #else
-    new_status->sequence = 0;
-    new_status->policyload = 0;
+        new_status->sequence = 0;
+        new_status->policyload = 0;
 #endif
-    if (ksu_late_loaded && !new_status->enforcing) {
-        new_status->enforcing = 1;
+        if (!new_status->enforcing) {
+            new_status->enforcing = 1;
+        }
     }
 
     fake_status = new_page;
@@ -323,11 +328,6 @@ static int ksu_selinux_hide_enable()
         pr_err("no backup sepolicy available, please save feature and reboot to retry!\n");
         return -EAGAIN;
     }
-    /* backup 是 apply_kernelsu_rules 时刻策略的 dup, late-load 场景下
-	 * 开机到模块加载间的 grant/策略操作会使 latest_granting 偏离出厂值,
-	 * 应用经 security_compute_av 读到的 avd->seqno 即由此来。强制回到
-	 * 出厂值 1: 正常设备上是无害 no-op, 前提失效时才是修复。 */
-    backup_sepolicy->latest_granting = 1;
     selinux_write_op = find_kernel_symbol_exact("write_op");
     if (!selinux_write_op) {
         pr_err("selinux_hide: no write_op found!\n");
