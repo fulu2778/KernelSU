@@ -298,9 +298,6 @@ class SettingsViewModel(
             }
         }
     }
-            }
-        }
-    }
 
     fun setFakeLockEnabled(enabled: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
