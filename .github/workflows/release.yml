@@ -1,48 +1,58 @@
 name: Release
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
 
+env:
+  KSU_VERSION_BASE: "4.1.6"
+
 jobs:
   build-manager:
     uses: ./.github/workflows/build-manager.yml
     secrets: inherit
+
   release:
-    needs:
-      - build-manager
+    needs: build-manager
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: Rename ksud
+      - name: Compute versionCode and tag
+        id: version
         run: |
-          mkdir -p ksud
-          for dir in ./ksud-*; do
-              if [ -d "$dir" ]; then
-                 echo "----- Rename $dir -----"
-                 ksud_platform_name=$(basename "$dir")
-                 find "$dir" -type f -name "ksud" -path "*/release/*" | while read -r ksud_file; do
-                   if [ -f "$ksud_file" ]; then
-                     mv "$ksud_file" "ksud/$ksud_platform_name"
-                   fi
-                 done
-              fi
-          done
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          VERSION_CODE=$((30000 + COMMIT_COUNT))
+          echo "versionCode=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "tag=v${KSU_VERSION_BASE}_${VERSION_CODE}" >> "$GITHUB_OUTPUT"
 
-      - name: Display structure of downloaded files
-        run: ls -R
+      - name: Download manager apk
+        uses: actions/download-artifact@v8
+        with:
+          name: manager
+          path: manager
 
-      - name: release
+      - name: Create tag if missing
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Created tag $TAG"
+          else
+            echo "Tag $TAG already exists, using it"
+          fi
+
+      - name: Publish release
         uses: softprops/action-gh-release@v3
         with:
-          files: |
-            manager/*.apk
-            android*-lkm/*_kernelsu.ko
-            ksud/ksud-*
-            ksuinit/**
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          files: manager/*.apk
+          generate_release_notes: true
