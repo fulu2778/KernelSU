@@ -26,6 +26,18 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
+    // On tag builds (CI release), use a semantic version code so a release is
+    // always newer than any branch build from the same commit count.
+    // vMAJOR.MINOR.PATCH -> MAJOR*10000 + MINOR*100 + PATCH (e.g. v4.1.6 -> 40106)
+    if (System.getenv("GITHUB_REF_TYPE") == "tag") {
+        val tag = System.getenv("GITHUB_REF_NAME") ?: ""
+        val m = Regex("^v(\\d+)\\.(\\d+)\\.(\\d+)$").find(tag)
+        if (m != null) {
+            return m.groupValues[1].toInt() * 10000 +
+                m.groupValues[2].toInt() * 100 +
+                m.groupValues[3].toInt()
+        }
+    }
     val commitCount = getGitCommitCount()
     return 30000 + commitCount
 }
