@@ -258,4 +258,10 @@
     <string name="profile_flags_desc_no_new_privs">防止在此 Root Profile 的上下文中透過 KernelSU 進一步提升權限</string>
     <string name="install_force_backup">備份為原廠映像</string>
     <string name="install_force_backup_summary">請確保你選擇的 boot 映像是原廠映像</string>
+    <string name="settings_fake_lock">一定情況下(弱)隱藏 Bootloader 解鎖狀態</string>
+    <string name="settings_fake_lock_summary">將設備偽裝為 BL 未解鎖狀態，避免應用檢測</string>
+    <string name="settings_mount_hide">隱藏掛載記錄</string>
+    <string name="settings_mount_hide_summary">僅隱藏模組的掛載條目，系統掛載不受影響，模組功能完整保留</string>
+    <string name="settings_selinux_spoof">偽裝 SELinux 審計</string>
+    <string name="settings_selinux_spoof_summary">在 avc 審計日誌中遮擋 ksu 域，讓應用看不到 Root 痕跡</string>
 </resources>

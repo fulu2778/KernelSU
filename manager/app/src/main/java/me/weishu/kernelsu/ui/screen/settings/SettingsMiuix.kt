@@ -21,8 +21,8 @@ import androidx.compose.material.icons.rounded.ContactPage
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.GppGood
-import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.DeveloperMode
 import androidx.compose.material.icons.rounded.ElectricalServices
 import androidx.compose.material.icons.rounded.Fence
@@ -307,7 +307,7 @@ fun SettingPagerMiuix(
                                 summary = stringResource(id = R.string.settings_selinux_spoof_summary),
                                 startAction = {
                                     Icon(
-                                        Icons.Rounded.VerifiedUser,
+                                        Icons.Rounded.Security,
                                         modifier = Modifier.padding(end = 6.dp),
                                         contentDescription = stringResource(id = R.string.settings_selinux_spoof),
                                         tint = colorScheme.onBackground
@@ -323,7 +323,7 @@ fun SettingPagerMiuix(
                                 summary = stringResource(id = R.string.settings_fake_lock_summary),
                                 startAction = {
                                     Icon(
-                                        Icons.Rounded.GppGood,
+                                        Icons.Rounded.Lock,
                                         modifier = Modifier.padding(end = 6.dp),
                                         contentDescription = stringResource(id = R.string.settings_fake_lock),
                                         tint = colorScheme.onBackground
@@ -423,7 +423,7 @@ fun SettingPagerMiuix(
                                     summary = mountHideSummary,
                                     startAction = {
                                         Icon(
-                                            Icons.Rounded.Lock,
+                                            Icons.Rounded.VisibilityOff,
                                             modifier = Modifier.padding(end = 6.dp),
                                             contentDescription = stringResource(id = R.string.settings_mount_hide),
                                             tint = colorScheme.onBackground

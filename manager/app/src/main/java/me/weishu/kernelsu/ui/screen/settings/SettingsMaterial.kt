@@ -17,8 +17,8 @@ import androidx.compose.material.icons.filled.Adb
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ContactPage
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.GppGood
-import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.ElectricalServices
@@ -247,7 +247,7 @@ fun SettingPagerMaterial(
                         },
                         {
                             SegmentedSwitchItem(
-                                icon = Icons.Filled.VerifiedUser,
+                                icon = Icons.Filled.Security,
                                 title = stringResource(id = R.string.settings_selinux_spoof),
                                 summary = stringResource(id = R.string.settings_selinux_spoof_summary),
                                 enabled = uiState.isFullFeatured,
@@ -257,7 +257,7 @@ fun SettingPagerMaterial(
                         },
                         {
                             SegmentedSwitchItem(
-                                icon = Icons.Filled.GppGood,
+                                icon = Icons.Filled.Lock,
                                 title = stringResource(id = R.string.settings_fake_lock),
                                 summary = stringResource(id = R.string.settings_fake_lock_summary),
                                 enabled = uiState.isFullFeatured,
@@ -328,7 +328,7 @@ fun SettingPagerMaterial(
                                     else -> stringResource(id = R.string.settings_mount_hide_summary)
                                 }
                                 SegmentedSwitchItem(
-                                    icon = Icons.Filled.Lock,
+                                    icon = Icons.Filled.VisibilityOff,
                                     title = stringResource(id = R.string.settings_mount_hide),
                                     summary = mountHideSummary,
                                     enabled = uiState.mountHideStatus == "supported",
