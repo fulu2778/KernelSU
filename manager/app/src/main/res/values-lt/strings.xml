@@ -91,4 +91,6 @@
     <string name="profile_flags_desc_no_new_privs">Neleidžia toliau didinti privilegijų per KernelSU šio root profilio kontekste.</string>
     <string name="install_force_backup">Kurti atsarginę kopiją kaip gamyklinį atvaizdą</string>
     <string name="install_force_backup_summary">Įsitikinkite, kad pasirinktas boot atvaizdas yra gamyklinis atvaizdas</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
 </resources>

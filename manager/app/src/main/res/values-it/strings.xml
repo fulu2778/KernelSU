@@ -141,4 +141,6 @@
     <string name="profile_flags_desc_no_new_privs">Impedisce un\'ulteriore escalation dei privilegi tramite KernelSU nel contesto di questo profilo root.</string>
     <string name="install_force_backup">Esegui backup come immagine originale</string>
     <string name="install_force_backup_summary">Assicurati che l\'immagine di boot selezionata sia l\'immagine originale</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
 </resources>

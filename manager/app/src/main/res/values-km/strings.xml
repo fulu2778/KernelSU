@@ -18,4 +18,6 @@
     <string name="profile_flags_desc_no_new_privs">ទប់ស្កាត់ការបង្កើនសិទ្ធិបន្ថែមតាមរយៈ KernelSU នៅក្នុងបរិបទនៃប្រវត្តិរូប root នេះ។</string>
     <string name="install_force_backup">បម្រុងទុកជារូបភាពដើម</string>
     <string name="install_force_backup_summary">សូមប្រាកដថា boot image ដែលអ្នកបានជ្រើសរើសគឺជារូបភាពដើម</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
 </resources>

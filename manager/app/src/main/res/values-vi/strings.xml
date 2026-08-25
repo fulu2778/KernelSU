@@ -312,4 +312,6 @@
     <string name="nav_rail_collapse">Thu gọn thanh điều hướng</string>
     <string name="settings_navigation_badge">Biểu tượng Điều hướng</string>
     <string name="settings_navigation_badge_summary">Hiển thị số lượng ứng dụng được cấp phép và số lượng module được kích hoạt trên thanh điều hướng.</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
 </resources>

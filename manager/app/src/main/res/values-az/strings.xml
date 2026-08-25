@@ -109,4 +109,6 @@ Kanalımıza %2$s qoşulun</string>
     <string name="profile_flags_desc_no_new_privs">Bu root profili kontekstində KernelSU vasitəsilə əlavə səlahiyyət yüksəltməsinin qarşısını alır.</string>
     <string name="install_force_backup">Orijinal imic kimi yedəklə</string>
     <string name="install_force_backup_summary">Zəhmət olmasa seçdiyiniz boot imicinin orijinal imic olduğuna əmin olun</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
 </resources>

@@ -141,4 +141,6 @@
     <string name="profile_flags_desc_no_new_privs">Împiedică escaladarea suplimentară a privilegiilor prin KernelSU în contextul acestui profil root.</string>
     <string name="install_force_backup">Salvează ca imagine originală</string>
     <string name="install_force_backup_summary">Asigură-te că imaginea boot selectată este imaginea originală</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
 </resources>

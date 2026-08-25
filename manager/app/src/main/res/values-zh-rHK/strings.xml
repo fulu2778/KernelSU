@@ -264,4 +264,6 @@
     <string name="settings_mount_hide_summary">僅隱藏模組的掛載條目，系統掛載不受影響，模組功能完整保留</string>
     <string name="settings_selinux_spoof">偽裝 SELinux 審計</string>
     <string name="settings_selinux_spoof_summary">在 avc 審計日誌中遮擋 ksu 域，讓應用看不到 Root 痕跡</string>
+    <string name="settings_webview_zygote_umount">為 WebView 卸載模組</string>
+    <string name="settings_webview_zygote_umount_summary">防止 WebView 進程洩露資訊，但可能導致模組失效。需要重啟生效</string>
 </resources>

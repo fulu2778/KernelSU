@@ -48,4 +48,6 @@
     <string name="profile_flags_desc_no_new_privs">Menghalang peningkatan keistimewaan lanjut melalui KernelSU dalam konteks profil root ini.</string>
     <string name="install_force_backup">Sandarkan sebagai imej asal</string>
     <string name="install_force_backup_summary">Sila pastikan imej boot yang anda pilih ialah imej asal</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
 </resources>

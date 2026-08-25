@@ -13,4 +13,12 @@
     <string name="profile_flags_desc_no_new_privs">Sprečava dalje podizanje privilegija putem KernelSU-a u okviru ovog root profila.</string>
     <string name="install_force_backup">Napravi rezervnu kopiju kao originalnu sliku</string>
     <string name="install_force_backup_summary">Uverite se da je izabrana boot slika originalna slika</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
+    <string name="settings_fake_lock">Hide BL unlock status</string>
+    <string name="settings_fake_lock_summary">Weakened: hide Bootloader unlock status under certain conditions; apps cannot detect it is unlocked</string>
+    <string name="settings_mount_hide">Hide mount entries</string>
+    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
+    <string name="settings_selinux_spoof">Spoof SELinux audit</string>
+    <string name="settings_selinux_spoof_summary">Mask ksu domain in avc audit logs so apps cannot see root traces</string>
 </resources>

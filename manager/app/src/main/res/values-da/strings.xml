@@ -154,4 +154,6 @@
     <string name="profile_flags_desc_no_new_privs">Forhindrer yderligere priviligeringseskalering via KernelSU inden for konteksten af denne root-profil.</string>
     <string name="install_force_backup">Sikkerhedskopiér som originalt image</string>
     <string name="install_force_backup_summary">Sørg for, at det valgte boot-image er det originale image</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
 </resources>
