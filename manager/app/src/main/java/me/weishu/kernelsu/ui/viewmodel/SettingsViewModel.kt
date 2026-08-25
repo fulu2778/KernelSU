@@ -61,6 +61,8 @@ class SettingsViewModel(
 
             val kernelUmountStatus = repo.getKernelUmountStatus()
             val isKernelUmountEnabled = repo.isKernelUmountEnabled()
+            val webViewZygoteUmountStatus = repo.getWebViewZygoteUmountStatus()
+            val isWebViewZygoteUmountEnabled = repo.isWebViewZygoteUmountEnabled()
             val selinuxHideStatus = repo.getSelinuxHideStatus()
             val isSelinuxHideEnabled = repo.isSelinuxHideEnabled()
             val isSelinuxSpoofEnabled = repo.isSelinuxSpoofEnabled()
@@ -102,6 +104,8 @@ class SettingsViewModel(
                     isAdbRootEnabled = isAdbRootEnabled,
                     kernelUmountStatus = kernelUmountStatus,
                     isKernelUmountEnabled = isKernelUmountEnabled,
+                    webViewZygoteUmountStatus = webViewZygoteUmountStatus,
+                    isWebViewZygoteUmountEnabled = isWebViewZygoteUmountEnabled,
                     selinuxHideStatus = selinuxHideStatus,
                     isSelinuxHideEnabled = isSelinuxHideEnabled,
                     isSelinuxSpoofEnabled = isSelinuxSpoofEnabled,
@@ -286,6 +290,18 @@ class SettingsViewModel(
         }
     }
 
+    fun setWebViewZygoteUmountEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (repo.setWebViewZygoteUmountEnabled(enabled)) {
+                repo.execKsudFeatureSave()
+                _uiState.update { it.copy(isWebViewZygoteUmountEnabled = enabled) }
+            }
+        }
+    }
+            }
+        }
+    }
+
     fun setFakeLockEnabled(enabled: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             FakeLockRepository().setEnabled(enabled)
@@ -299,7 +315,6 @@ class SettingsViewModel(
             _uiState.update { it.copy(isSelinuxSpoofEnabled = enabled) }
         }
     }
-
     fun setSelinuxHideEnabled(enabled: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             val status = repo.setSelinuxHideEnabled(enabled)

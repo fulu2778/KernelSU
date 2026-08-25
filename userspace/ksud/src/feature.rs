@@ -24,6 +24,7 @@ pub enum FeatureId {
     MountHide = 5,
     BootconfigHide = 6,
     SelinuxSpoof = 7,
+    WebviewZygoteUmount = 8,
 }
 
 impl FeatureId {
@@ -37,6 +38,7 @@ impl FeatureId {
             5 => Some(Self::MountHide),
             6 => Some(Self::BootconfigHide),
             7 => Some(Self::SelinuxSpoof),
+            8 => Some(Self::WebviewZygoteUmount),
             _ => None,
         }
     }
@@ -51,6 +53,7 @@ impl FeatureId {
             Self::MountHide => "mount_hide",
             Self::BootconfigHide => "bootconfig_hide",
             Self::SelinuxSpoof => "selinux_spoof",
+            Self::WebviewZygoteUmount => "webview_zygote_umount",
         }
     }
 
@@ -78,6 +81,9 @@ impl FeatureId {
             Self::SelinuxSpoof => {
                 "Selinux Spoof - deny ksu-domain avd lookups and mask ksu in avc audit logs"
             }
+            Self::WebviewZygoteUmount => {
+                "WebView Zygote Umount - unmount modules from WebView zygote and its isolated children"
+            }
         }
     }
 }
@@ -92,6 +98,7 @@ fn parse_feature_id(name: &str) -> Result<FeatureId> {
         "mount_hide" | "5" => Ok(FeatureId::MountHide),
         "bootconfig_hide" | "6" => Ok(FeatureId::BootconfigHide),
         "selinux_spoof" | "7" => Ok(FeatureId::SelinuxSpoof),
+        "webview_zygote_umount" | "8" => Ok(FeatureId::WebviewZygoteUmount),
         _ => bail!("Unknown feature: {name}"),
     }
 }
@@ -354,6 +361,7 @@ pub fn list_features() {
         FeatureId::MountHide,
         FeatureId::BootconfigHide,
         FeatureId::SelinuxSpoof,
+        FeatureId::WebviewZygoteUmount,
     ];
 
     for feature_id in &all_features {
@@ -420,6 +428,7 @@ pub fn save_config() -> Result<()> {
         FeatureId::MountHide,
         FeatureId::BootconfigHide,
         FeatureId::SelinuxSpoof,
+        FeatureId::WebviewZygoteUmount,
     ];
 
     for feature_id in &all_features {
