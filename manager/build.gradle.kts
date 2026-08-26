@@ -31,5 +31,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
+    // CI passes a canonical name (e.g. v4.1.6_32661) so APK versionName
+    // matches versionCode; fall back to git describe for local builds.
+    System.getenv("KSU_VERSION_NAME")?.takeIf { it.isNotBlank() }?.let { return it }
     return getGitDescribe()
 }

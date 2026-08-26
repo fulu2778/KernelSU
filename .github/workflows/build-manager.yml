@@ -36,6 +36,12 @@ on:
       - 'Cargo.lock'
       - 'Cargo.toml'
   workflow_call:
+    inputs:
+      ksu_version_name:
+        description: Canonical version name (e.g. v4.1.6_32661)
+        required: false
+        type: string
+        default: ""
 
 jobs:
   generate-key:
@@ -194,6 +200,8 @@ jobs:
         uses: android-actions/setup-android@v4
 
       - name: Build with Gradle
+        env:
+          KSU_VERSION_NAME: ${{ inputs.ksu_version_name }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             ./gradlew clean assembleRelease -PIS_PR_BUILD=true

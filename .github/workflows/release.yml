@@ -15,13 +15,12 @@ env:
   KSU_VERSION_BASE: "4.1.6"
 
 jobs:
-  build-manager:
-    uses: ./.github/workflows/build-manager.yml
-    secrets: inherit
-
-  release:
-    needs: build-manager
+  prep:
     runs-on: ubuntu-latest
+    outputs:
+      version_code: ${{ steps.version.outputs.version_code }}
+      version_name: ${{ steps.version.outputs.version_name }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -34,7 +33,24 @@ jobs:
           COMMIT_COUNT=$(git rev-list --count HEAD)
           VERSION_CODE=$((30000 + COMMIT_COUNT))
           echo "versionCode=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "version_name=v${KSU_VERSION_BASE}_${VERSION_CODE}" >> "$GITHUB_OUTPUT"
           echo "tag=v${KSU_VERSION_BASE}_${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+
+  build-manager:
+    needs: prep
+    uses: ./.github/workflows/build-manager.yml
+    with:
+      ksu_version_name: ${{ needs.prep.outputs.version_name }}
+    secrets: inherit
+
+  release:
+    needs: [build-manager, prep]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Download manager apk
         uses: actions/download-artifact@v8
@@ -44,7 +60,7 @@ jobs:
 
       - name: Create tag if missing
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
+          TAG="${{ needs.prep.outputs.tag }}"
           if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             git tag "$TAG"
             git push origin "$TAG"
@@ -56,8 +72,8 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
+          tag_name: ${{ needs.prep.outputs.tag }}
+          name: ${{ needs.prep.outputs.tag }}
           target_commitish: main
           files: manager/*.apk
           generate_release_notes: true
