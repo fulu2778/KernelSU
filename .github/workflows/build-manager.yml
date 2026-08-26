@@ -302,9 +302,12 @@ jobs:
       - name: Repack and resign
         if: ${{ github.event_name == 'pull_request' || (github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')) || github.ref_type == 'tag' }}
         run: |
+          VERSION_CODE=$((30000 + $(git rev-list --count HEAD)))
+          KSU_VERSION_BASE="${KSU_VERSION_BASE:-4.1.6}"
           python3 repack_apk.py repack \
             -b release \
             -t release \
+            -n "KernelSU_v${KSU_VERSION_BASE}_${VERSION_CODE}" \
             -a arm64-v8a \
             -a x86_64 \
             -K "$SIGN_KEYSTORE_FILE" \
