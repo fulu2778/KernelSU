@@ -2,18 +2,18 @@
 /*
  * Copyright (C) 2026 tees
  *
- * selinux_spoof: avc 审计日志伪装 (回调入口双字段替换)。
+ * selinux_spoof: avc 审计日志伪装 (回调入口 tcontext 替换)。
  *
  * 手法: kprobe 挂 avc_audit_post_callback 入口, 在其执行前把
- *   sad->ssid / sad->tsid 中 == ksu_sid 的字段替换为 priv_app_sid。
- *   与 SUSFS 源码级 goto 改 tcontext 语义一致 (回调局部), 单探针、
- *   无状态传递、无窗口、不依赖返回地址/PAC。
+ *   sad->tsid == ksu_sid 的字段替换为 priv_app_sid。
+ *   语义与 SUSFS 源码级 audit_log_format 换字一致 (回调局部),
+ *   单探针、无状态传递、无窗口。
  *
- * 相对原版的修正 (原版两类缺陷, 设备实测 6 条 ksu 审计全部裸输出):
- *   1. 惰性解析顺序 bug: ksu 域事件先发生时 priv_app_sid 永远停在 -1
- *      (后续事件 goto check 短路), 替换永不生效 -> 本版 enable 时
- *      一次解析 ksu/priv_app 两个 sid。
- *   2. 只盖 tcontext: scontext 经 ssid 同样打印, 本版 ssid/tsid 一起换。
+ * 关键: 只换 tsid (目标域), 不换 ssid (源域)。
+ *   检测方从 avc 日志嗅探"su 对象存在"的途径 = 其他 domain 访问
+ *   ksu 对象被拒时打印的 tcontext=u:r:su:s0; 换掉 tsid 即隐身。
+ *   源域(通常是 app/system)保真, 避免"谁访问谁"交叉分析矛盾;
+ *   且 su 域自身几乎不触发 denied, 换 ssid 无实际收益、徒增痕迹。
  *
  * 为什么不在 security_sid_to_context 出口做: 输出被 LSPosed/Zygisk
  * 等作实际逻辑使用 (getcon 判断自身域), 曾实测导致 LSPosed 失败;
@@ -72,14 +72,13 @@ static int avc_cb_pre(struct kprobe *p, struct pt_regs *regs)
     if (!sad)
         return 0;
 
-    /* scontext/tcontext 双字段: 只替换 ksu 域, 其余域原样 (不影响
-     * 任何其他审计内容, 与 SUSFS 注释语义一致) */
-    if (sad->ssid == ksu_sid)
-        sad->ssid = priv_app_sid;
-    if (sad->tsid == ksu_sid)
-        sad->tsid = priv_app_sid;
-    if (sad->ssid == ksu_sid)
-        sad->ssid = priv_app_sid;
+    /* 只替换 tsid (被访问对象域), 与 SUSFS 语义一致:
+     * 检测方从 avc 日志能嗅到"su 对象存在"的途径, 是别的域访问
+     * ksu 对象被拒时打印的 tcontext=u:r:su:s0。把 tsid 换成
+     * priv_app_sid, "su 对象"就隐身了。
+     * 不动 scontext (源域): 触发者通常是 app/system 等其他域,
+     * 保留真实源不影响隐藏, 且避免"谁访问谁"交叉分析出矛盾。
+     * (su 域自身几乎不触发 denied, 不需要处理 ssid。) */
     if (sad->tsid == ksu_sid)
         sad->tsid = priv_app_sid;
     return 0;
