@@ -315,7 +315,7 @@ jobs:
           python3 repack_apk.py repack \
             -b release \
             -t release \
-            -n "KernelSU_v${KSU_VERSION_BASE}_${VERSION_CODE}" \
+            -n "KernelSU_v${KSU_VERSION_BASE}_${VERSION_CODE}-release" \
             -a arm64-v8a \
             -a x86_64 \
             -K "$SIGN_KEYSTORE_FILE" \
