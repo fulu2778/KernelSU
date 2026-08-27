@@ -40,9 +40,6 @@
 #include <linux/string.h>
 #include <asm/ptrace.h>
 
-#define MOUNT_OFF_MNT 32
-#define MOUNT_OFF_MNT_ID 324 /* MIUI GKI 实测: struct mount+324 */
-
 static bool ksu_mount_hide_enabled __read_mostly = true;
 
 static struct kretprobe kr_mountinfo, kr_vfsmnt, kr_vfsstat;
@@ -52,9 +49,9 @@ struct hide_ctx {
     unsigned long count_before;
 };
 
-static int mnt_id_of(struct vfsmount *mnt)
+static int mnt_id_of(struct vfsmount *vm)
 {
-    return *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_ID);
+    return container_of(vm, struct mount, mnt)->mnt_id;
 }
 
 /* 高位 id = 模块挂载 (mount_id 分配), 过滤之 */
@@ -130,9 +127,18 @@ static int ksu_mount_hide_feature_get(u64 *value)
     return 0;
 }
 
+bool ksu_mount_hide_is_enabled(void)
+{
+    return ksu_mount_hide_enabled;
+}
+
 static int ksu_mount_hide_feature_set(u64 value)
 {
     ksu_mount_hide_enabled = value != 0;
+    if (value)
+        ksu_mount_id_remark_all();
+    else
+        ksu_mount_id_restore_all();
     pr_info("mount_hide: set to %d\n", ksu_mount_hide_enabled);
     return 0;
 }

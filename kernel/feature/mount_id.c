@@ -2,101 +2,109 @@
 /*
  * Copyright (C) 2026 tees
  *
- * mount_id: KSU 模块挂载使用独立高位 mnt_id 空间 (仿 susfs SUS_MOUNT)。
+ * mount_id: KSU 模块挂载使用独立高位 mnt_id 空间 (对齐官方 SUSFS)。
  *
- * 背景: mount_hide 在 show 层过滤模块挂载条目, 但 mnt_id 在挂载创建时
- * 从全局 ida 顺序分配, 被过滤条目的 id 在可见序列里留下空洞——检测方
- * 发现 id 不连续即判定存在被隐藏的挂载 ("挂载间隙")。
- *
- * susfs 的解法 (本文件移植到 LKM): 挂载创建时, 模块挂载 (source 以
- * /adb/modules 开头) 的 mnt_id 从 DEFAULT_KSU_MNT_ID 起分配, 普通挂载
- * 仍从 1 起。可见序列 1..N 连续, 模块挂载的大 id 落在序列之外——空洞
- * 天然不存在。与 mount_hide 的 show 层过滤叠加后, 条目既不可见也无空洞。
- *
- * 实现: KSU 模块挂载是 bind (mount --bind /adb/modules/x ...), 走
- * clone_mnt() (复制已存在挂载), 少数新文件系统挂载走 vfs_create_mount()。
- * 两个 kretprobe 都挂: clone_mnt 为主路径 (devname 判断 source 前缀),
- * vfs_create_mount 兜底 (fc->source 判断)。命中后把 mnt_id 换成高位
- * 分配的新 id (偏移经设备实测), 旧低 id 归还 ida (mnt_free_id 释放时
- * ida_free 正常)。
- *
- * fail-safe: mnt_id_ida 符号缺失或旧 id 不在合理低值区间时整体降级,
- * 不影响 mount_hide 过滤功能。
+ * 机制:
+ * - 判据 = SELinux 域: 挂载创建时 current_sid() == ksu 域 SID
+ *   ("u:r:ksu:s0")。模块脚本由 init rc 以 ksu 域 exec ksud 拉起(继承域),
+ *   与挂载参数(source/挂载点/类型)完全无关 —— 字符串判据(如 /adb/modules
+ *   前缀)覆盖不了 overlay(元模块自定义 source)的问题不再存在。
+ * - 结构访问 = 编译期: 本模块按 KMI 分别编译(build-all.sh 逐 KMI 出 ko),
+ *   头文件含完整 struct mount —— mnt_id 用 container_of 直接字段存取,
+ *   不需要任何硬编码偏移(BTF/魔数/设备实测皆不需要)。与官方 SUSFS
+ *   "编译期结构访问"同哲学, 只是以 LKM 模块形态实现。
+ * - 置高位 = 官方同值: ida_alloc_min(&mnt_id_ida, 2000000000) 起分配,
+ *   可见序列 1..N 连续, 模块挂载的大 id 落在序列之外 —— 无空洞。
+ * - 开关双控("隐藏挂载记录" feature):
+ *   开 → 命中判据的挂载置高位并记入跟踪表;
+ *   关 → 表中全部归还低位(输出原样连续), 不再标记新的。
+ *   跟踪表对每个挂载持 vfsmount 引用(mntget), 翻转/卸载不悬空。
  */
 
 #include "mount_id.h"
-#include "infra/symbol_resolver.h"
+#include "mount_hide.h"
 #include "arch.h"
+#include "infra/symbol_resolver.h"
 #include "klog.h"
+#include "selinux/selinux.h"
 
 #include <linux/cred.h>
-#include <linux/fs_context.h>
-#include <linux/fdtable.h>
+#include <linux/err.h>
 #include <linux/fs.h>
 #include <linux/idr.h>
-#include <linux/mount.h>
-#include <linux/namei.h>
 #include <linux/kernel.h>
 #include <linux/kprobes.h>
+#include <linux/list.h>
 #include <linux/module.h>
+#include <linux/mount.h>
 #include <linux/sched.h>
+#include <linux/spinlock.h>
 #include <linux/string.h>
+#include <linux/version.h>
 #include <asm/ptrace.h>
 
-#define MOUNT_ID_PREFIX "/adb/modules"
-#define DEFAULT_KSU_MNT_ID 0x1000000 /* 16777216, susfs 同值 */
-#define MOUNT_OFF_MNT 32
-#define MOUNT_OFF_MNT_ID 324 /* MIUI GKI 实测: struct mount+324 */
-static struct kretprobe kr_vfs_create_mount, kr_clone_mnt;
+#define MAX_MARKED_MOUNTS 64
+
+static struct ida *mnt_id_ida_p;
 static bool mount_id_active;
 
-/* mnt_id_ida (fs/namespace.c static 变量, kallsyms 可寻址) */
-static struct ida *mnt_id_ida_p;
+/* 判据: ksu 域 */
+typedef int (*context_to_sid_t)(const char *scontext, u32 scontext_len, u32 *out_sid);
+static context_to_sid_t context_to_sid_fn;
+static u32 (*current_sid_fn)(void);
+static u32 ksu_sid;
+static bool ksu_sid_valid;
 
-static int mnt_id_of(struct vfsmount *mnt)
+/* 跟踪表: 命中判据的挂载, 开关翻转用 */
+struct marked_mount {
+    struct list_head list;
+    struct vfsmount *vm;
+    bool high;
+};
+static LIST_HEAD(marked_list);
+static DEFINE_SPINLOCK(marked_lock);
+static int marked_count;
+
+static int mnt_id_of(struct vfsmount *vm)
 {
-    return *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_ID);
+    return container_of(vm, struct mount, mnt)->mnt_id;
 }
 
-static void set_mnt_id_of(struct vfsmount *mnt, int id)
+static void set_mnt_id_of(struct vfsmount *vm, int id)
 {
-    *(int *)((char *)mnt - MOUNT_OFF_MNT + MOUNT_OFF_MNT_ID) = id;
+    container_of(vm, struct mount, mnt)->mnt_id = id;
 }
 
-/* 核心: 把模块挂载的 mnt_id 换到高位空间, 低 id 归还 ida */
-static void reassign_sus_mnt_id(void *mnt)
+/* 判据: 当前进程是否 ksu 域 */
+static bool is_ksu_domain(void)
 {
-    struct vfsmount *vm = (struct vfsmount *)((char *)mnt + MOUNT_OFF_MNT);
-    int old_id, new_id;
+    return ksu_sid_valid && current_sid_fn && current_sid_fn() == ksu_sid;
+}
 
-    if (!mount_id_active || !mnt_id_ida_p || !mnt)
-        return;
+/* 置高位(标记): 低位 id 归还 ida, 换到 >= DEFAULT_KSU_MNT_ID */
+static void reassign_sus_mnt_id(struct vfsmount *vm)
+{
+    int old_id = mnt_id_of(vm), new_id;
 
-    old_id = mnt_id_of(vm);
     if (old_id <= 0 || old_id >= DEFAULT_KSU_MNT_ID)
-        return; /* 已是高位或偏移失配 */
+        return; /* 已是高位或无意义 id */
 
     new_id = ida_alloc_min(mnt_id_ida_p, DEFAULT_KSU_MNT_ID, GFP_ATOMIC);
     if (new_id < 0)
         return;
 
     set_mnt_id_of(vm, new_id);
-    ida_free(mnt_id_ida_p, old_id); /* 低 id 归还, 后续正常挂载可复用 */
-    pr_info("mount_id: sus mount id %d -> %d\n", old_id, new_id);
+    ida_free(mnt_id_ida_p, old_id);
+    pr_info("mount_id: sus mnt id %d -> %d\n", old_id, new_id);
 }
 
-/* 逆操作: 高位 id 归还, 分配新低位 id (恢复可见, 低值序列重新连续) */
-static void restore_sus_mnt_id(void *mnt)
+/* 归还低位(撤销标记): 恢复可见序列连续性 */
+static void restore_sus_mnt_id(struct vfsmount *vm)
 {
-    struct vfsmount *vm = (struct vfsmount *)((char *)mnt + MOUNT_OFF_MNT);
-    int old_id, new_id;
+    int old_id = mnt_id_of(vm), new_id;
 
-    if (!mount_id_active || !mnt_id_ida_p || !mnt)
-        return;
-
-    old_id = mnt_id_of(vm);
     if (old_id < DEFAULT_KSU_MNT_ID)
-        return; /* 已是低位, 无需恢复 */
+        return; /* 已是低位 */
 
     new_id = ida_alloc_min(mnt_id_ida_p, 1, GFP_ATOMIC);
     if (new_id < 0)
@@ -107,81 +115,134 @@ static void restore_sus_mnt_id(void *mnt)
     pr_info("mount_id: unhide mnt id %d -> %d\n", old_id, new_id);
 }
 
-/* clone_mnt(old, root, flag) -> struct mount*: bind 挂载的主路径。
- * root 参数即 bind 的源文件 dentry —— dentry_path_raw 可拿源路径,
- * 命中 /adb/modules 即模块挂载 (零偏移依赖)。 */
-struct clone_mnt_ctx {
-    struct dentry *root;
-};
-
-static int clone_mnt_entry(struct kretprobe_instance *ri, struct pt_regs *regs)
+/* 挂载创建命中: 登记进跟踪表; 开关开启时置高位 */
+static void ksu_mount_id_maybe_mark(struct vfsmount *vm)
 {
-    struct clone_mnt_ctx *ctx = (struct clone_mnt_ctx *)ri->data;
+    struct marked_mount *e;
+    unsigned long flags;
+    bool found = false;
 
-    if (unlikely(!mount_id_active))
-        return 1; /* 禁用: 不注册 ret, 零开销 */
+    if (!mount_id_active || !mnt_id_ida_p || IS_ERR_OR_NULL(vm))
+        return;
+    if (!is_ksu_domain())
+        return;
 
-    ctx->root = (struct dentry *)PT_REGS_PARM2(regs);
-    return 0;
+    spin_lock(&marked_lock);
+    list_for_each_entry (e, &marked_list, list) {
+        if (e->vm == vm) {
+            found = true;
+            break;
+        }
+    }
+    if (!found && marked_count < MAX_MARKED_MOUNTS) {
+        e = kzalloc(sizeof(*e), GFP_ATOMIC);
+        if (e) {
+            mntget(vm);
+            e->vm = vm;
+            e->high = false;
+            list_add_tail(&e->list, &marked_list);
+            marked_count++;
+            found = true;
+        }
+    }
+    spin_unlock(&marked_lock);
+
+    if (!found)
+        return;
+    if (ksu_mount_hide_is_enabled() && !e->high && mnt_id_of(vm) < DEFAULT_KSU_MNT_ID) {
+        reassign_sus_mnt_id(vm);
+        e->high = true;
+    }
 }
+
+/* 开关关闭: 表中全部归还低位 */
+void ksu_mount_id_restore_all(void)
+{
+    struct marked_mount *e;
+    unsigned long flags;
+
+    spin_lock(&marked_lock);
+    list_for_each_entry (e, &marked_list, list) {
+        if (e->high) {
+            restore_sus_mnt_id(e->vm);
+            e->high = false;
+        }
+    }
+    spin_unlock(&marked_lock);
+}
+
+/* 开关开启: 表中全部补标置高 */
+void ksu_mount_id_remark_all(void)
+{
+    struct marked_mount *e;
+    unsigned long flags;
+
+    spin_lock(&marked_lock);
+    list_for_each_entry (e, &marked_list, list) {
+        if (!e->high && mnt_id_of(e->vm) < DEFAULT_KSU_MNT_ID) {
+            reassign_sus_mnt_id(e->vm);
+            e->high = true;
+        }
+    }
+    spin_unlock(&marked_lock);
+}
+
+/* ---- 挂载创建拦截: clone_mnt / vfs_create_mount ---- */
 
 static int clone_mnt_ret(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    struct clone_mnt_ctx *ctx = (struct clone_mnt_ctx *)ri->data;
-    void *new_mnt = (void *)PT_REGS_RC(regs);
-    char *buf;
-    const char *root_path;
+    struct vfsmount *vm = (struct vfsmount *)PT_REGS_RC(regs);
 
-    if (!new_mnt || IS_ERR(new_mnt) || !ctx->root)
-        return 0;
-
-    /* dentry_path_raw 对已 unlink 的源 dentry 失败 (zygisk dex2oat 场景),
-     * 与 mount_hide 判据一致: 漏判的条目可见, 不会产生空洞 */
-    buf = kmalloc(PATH_MAX, GFP_KERNEL);
-    if (!buf)
-        return 0;
-    root_path = dentry_path_raw(ctx->root, buf, PATH_MAX);
-    if (!IS_ERR(root_path) && strncmp(root_path, MOUNT_ID_PREFIX, sizeof(MOUNT_ID_PREFIX) - 1) == 0) {
-        kfree(buf);
-        reassign_sus_mnt_id(new_mnt);
-        return 0;
-    }
-    kfree(buf);
-    return 0;
-}
-
-/* vfs_create_mount(fc) -> struct vfsmount*: 新文件系统挂载 (overlay 等) */
-struct vfs_create_mount_ctx {
-    const char *source;
-};
-
-static int vfs_create_mount_entry(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-    struct vfs_create_mount_ctx *ctx = (struct vfs_create_mount_ctx *)ri->data;
-    struct fs_context *fc;
-
-    if (unlikely(!mount_id_active))
-        return 1; /* 禁用: 不注册 ret, 零开销 */
-
-    fc = (struct fs_context *)PT_REGS_PARM1(regs);
-    ctx->source = fc ? fc->source : NULL;
+    ksu_mount_id_maybe_mark(vm);
     return 0;
 }
 
 static int vfs_create_mount_ret(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    struct vfs_create_mount_ctx *ctx = (struct vfs_create_mount_ctx *)ri->data;
-    struct vfsmount *mnt;
-    const char *source = ctx->source;
+    struct vfsmount *vm = (struct vfsmount *)PT_REGS_RC(regs);
 
-    /* 非模块挂载或创建失败: 跳过 */
-    if (!source || strncmp(source, MOUNT_ID_PREFIX, sizeof(MOUNT_ID_PREFIX) - 1) != 0)
-        return 0;
-    mnt = (struct vfsmount *)PT_REGS_RC(regs);
-    if (!mnt || IS_ERR(mnt))
-        return 0;
-    reassign_sus_mnt_id((void *)((char *)mnt - MOUNT_OFF_MNT));
+    ksu_mount_id_maybe_mark(vm);
     return 0;
+}
+
+static struct kretprobe kr_clone_mnt, kr_vfs_create_mount;
+
+static int kr_setup(struct kretprobe *kr, const char *name, kretprobe_handler_t ret)
+{
+    kr->kp.symbol_name = name;
+    kr->handler = ret;
+    kr->maxactive = 32;
+    if (register_kretprobe(kr)) {
+        pr_warn("mount_id: register %s failed\n", name);
+        kr->kp.symbol_name = NULL;
+        return -1;
+    }
+    return 0;
+}
+
+static void kr_teardown(struct kretprobe *kr)
+{
+    if (kr->kp.symbol_name) {
+        unregister_kretprobe(kr);
+        kr->kp.symbol_name = NULL;
+    }
+}
+
+/* ksu 域 SID 解析: security_context_to_sid / current_sid 走符号解析 */
+static void sid_init(void)
+{
+    context_to_sid_fn = (context_to_sid_t)find_kernel_symbol_exact("security_context_to_sid");
+    current_sid_fn = (u32 (*)(void))find_kernel_symbol_exact("current_sid");
+    if (!context_to_sid_fn || !current_sid_fn) {
+        pr_warn("mount_id: sid functions unavailable, judge degraded\n");
+        return;
+    }
+    if (context_to_sid_fn(KERNEL_SU_CONTEXT, strlen(KERNEL_SU_CONTEXT), &ksu_sid) == 0) {
+        ksu_sid_valid = true;
+        pr_info("mount_id: ksu sid = %u\n", ksu_sid);
+    } else {
+        pr_warn("mount_id: cannot resolve ksu domain sid\n");
+    }
 }
 
 int __init ksu_mount_id_init(void)
@@ -192,45 +253,36 @@ int __init ksu_mount_id_init(void)
         return 0;
     }
 
-    /* bind 挂载主路径 */
-    kr_clone_mnt.kp.symbol_name = "clone_mnt";
-    kr_clone_mnt.entry_handler = clone_mnt_entry;
-    kr_clone_mnt.handler = clone_mnt_ret;
-    kr_clone_mnt.data_size = sizeof(struct clone_mnt_ctx);
-    kr_clone_mnt.maxactive = 32;
-    if (register_kretprobe(&kr_clone_mnt)) {
-        pr_warn("mount_id: register clone_mnt failed, feature degraded\n");
-        kr_clone_mnt.kp.symbol_name = NULL;
+    sid_init();
+
+    if (kr_setup(&kr_clone_mnt, "clone_mnt", clone_mnt_ret)) {
+        pr_warn("mount_id: clone_mnt register failed, feature degraded\n");
         return 0;
     }
-
-    /* 新文件系统挂载兜底 (overlay 等) */
-    kr_vfs_create_mount.kp.symbol_name = "vfs_create_mount";
-    kr_vfs_create_mount.entry_handler = vfs_create_mount_entry;
-    kr_vfs_create_mount.handler = vfs_create_mount_ret;
-    kr_vfs_create_mount.data_size = sizeof(struct vfs_create_mount_ctx);
-    kr_vfs_create_mount.maxactive = 32;
-    if (register_kretprobe(&kr_vfs_create_mount)) {
-        pr_warn("mount_id: register vfs_create_mount failed\n");
-        kr_vfs_create_mount.kp.symbol_name = NULL;
-        /* clone_mnt 已注册, 功能仍可用 */
-    }
+    if (kr_setup(&kr_vfs_create_mount, "vfs_create_mount", vfs_create_mount_ret))
+        pr_warn("mount_id: vfs_create_mount register failed, overlay not covered\n");
 
     mount_id_active = true;
-    pr_info("mount_id: active (sus mounts get ids >= 0x%x)\n", DEFAULT_KSU_MNT_ID);
+    pr_info("mount_id: active (ksu-domain mounts get ids >= %d)\n", DEFAULT_KSU_MNT_ID);
     return 0;
 }
 
 void __exit ksu_mount_id_exit(void)
 {
+    struct marked_mount *e, *tmp;
+    unsigned long flags;
+
     mount_id_active = false;
-    if (kr_clone_mnt.kp.symbol_name) {
-        unregister_kretprobe(&kr_clone_mnt);
-        kr_clone_mnt.kp.symbol_name = NULL;
+    ksu_mount_id_restore_all();
+    spin_lock(&marked_lock);
+    list_for_each_entry_safe (e, tmp, &marked_list, list) {
+        list_del(&e->list);
+        mntput(e->vm);
+        kfree(e);
+        marked_count--;
     }
-    if (kr_vfs_create_mount.kp.symbol_name) {
-        unregister_kretprobe(&kr_vfs_create_mount);
-        kr_vfs_create_mount.kp.symbol_name = NULL;
-    }
+    spin_unlock(&marked_lock);
+    kr_teardown(&kr_vfs_create_mount);
+    kr_teardown(&kr_clone_mnt);
     pr_info("mount_id: deactivated\n");
 }
