@@ -55,8 +55,9 @@ static bool mount_id_active;
  * (无 secid_to_secctx/strcmp 回退)。 */
 
 typedef int (*ctx_to_sid_t)(const char *scontext, u32 scontext_len, u32 *out_sid);
+typedef u32 (*cur_sid_t)(void);
 static ctx_to_sid_t ctx_to_sid_fn;
-static u32 (*cur_sid_fn)(void);
+static cur_sid_t cur_sid_fn;
 static u32 ksu_sid;
 static bool ksu_sid_valid;
 
@@ -234,7 +235,7 @@ static void kr_teardown(struct kretprobe *kr)
 static void sid_init(void)
 {
     ctx_to_sid_fn = (ctx_to_sid_t)find_kernel_symbol_exact("security_context_to_sid");
-    cur_sid_fn = (u32 (*)(void))find_kernel_symbol_exact("current_sid");
+    cur_sid_fn = (cur_sid_t)find_kernel_symbol_exact("current_sid");
     if (!ctx_to_sid_fn || !cur_sid_fn) {
         pr_warn("mount_id: sid symbols unavailable, judge disabled\n");
         return;
