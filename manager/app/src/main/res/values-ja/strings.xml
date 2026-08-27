@@ -144,8 +144,8 @@
     <string name="settings_fake_lock">Hide unlock status</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
-    <string name="settings_mount_hide">マウントを隠す</string>
-    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
+
+
 
     <string name="processing">処理中…</string>
     <string name="refresh_pulling">下に引いて更新</string>

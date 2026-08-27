@@ -92,9 +92,6 @@ object Natives {
     external fun isSelinuxHideEnabled(): Boolean
     external fun setSelinuxHideEnabled(enabled: Boolean): Int
 
-    external fun isMountHideEnabled(): Boolean
-    external fun setMountHideEnabled(enabled: Boolean): Int
-
     /**
      * Get the user name for the uid.
      */

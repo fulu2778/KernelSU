@@ -1,8 +1,6 @@
 kernelsu-objs := core/init.o
 
 kernelsu-objs += feature/kernel_umount.o
-kernelsu-objs += feature/mount_hide.o
-kernelsu-objs += feature/mount_id.o
 kernelsu-objs += feature/selinux_spoof.o
 kernelsu-objs += feature/bootconfig_hide.o
 kernelsu-objs += feature/sulog.o

@@ -151,8 +151,8 @@
     <string name="settings_sucompat_summary">Cho phép truy cập Root thông qua /system/bin/su, trong các tiến trình mới.</string>
     <string name="settings_kernel_umount">Kernel umount</string>
     <string name="settings_kernel_umount_summary">Umount modules khỏi Kernel trong Hồ sơ ứng dụng.</string>
-    <string name="settings_mount_hide">Ẩn mount</string>
-    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
+
+
 
     <string name="settings_selinux_hide">Ẩn sửa đổi SELinux</string>
     <string name="settings_selinux_hide_summary">Ngăn chặn các ứng dụng phát hiện các thay đổi của SELinux.</string>

@@ -50,10 +50,6 @@ interface SettingsRepository {
 
     fun setSelinuxSpoofEnabled(enabled: Boolean): Boolean
 
-    suspend fun getMountHideStatus(): String
-    fun isMountHideEnabled(): Boolean
-    fun setMountHideEnabled(enabled: Boolean): Int
-
     suspend fun getSulogStatus(): String
     suspend fun getSulogPersistValue(): Long?
     fun setSulogEnabled(enabled: Boolean): Boolean

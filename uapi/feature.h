@@ -7,8 +7,7 @@ enum ksu_feature_id {
     KSU_FEATURE_SULOG = 2,
     KSU_FEATURE_ADB_ROOT = 3,
     KSU_FEATURE_SELINUX_HIDE = 4,
-    KSU_FEATURE_MOUNT_HIDE = 5,
-    /* 5/6/7 are fork-private; 8+ upstream, renumber if upstream claims these IDs */
+    /* 5 unused; 6/7/8 fork-private, 8+ upstream */
     KSU_FEATURE_BOOTCONFIG_HIDE = 6,
     KSU_FEATURE_SELINUX_SPOOF = 7,
     KSU_FEATURE_WEBVIEW_ZYGOTE_UMOUNT = 8,

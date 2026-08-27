@@ -153,8 +153,8 @@
     <string name="settings_fake_lock">Hide unlock status</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
-    <string name="settings_mount_hide">Sakrij mount</string>
-    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
+
+
 
     <string name="undo">Poništi</string>
     <string name="module_undo_uninstall_success">Deinstalacija %s uspješno otkazana</string>

@@ -86,8 +86,8 @@
     <string name="settings_fake_lock">Hide unlock status</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
-    <string name="settings_mount_hide">माउंट छुपाएं</string>
-    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
+
+
 
     <string name="profile_flags_desc_no_new_privs">इस रूट प्रोफाइल के संदर्भ में KernelSU के माध्यम से आगे विशेषाधिकार बढ़ाने से रोकता है।</string>
     <string name="install_force_backup">स्टॉक इमेज के रूप में बैकअप करें</string>

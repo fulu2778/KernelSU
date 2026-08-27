@@ -12,8 +12,8 @@
     <string name="settings_fake_lock">Hide unlock status</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
-    <string name="settings_mount_hide">លាក់ mount</string>
-    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
+
+
 
     <string name="profile_flags_desc_no_new_privs">ទប់ស្កាត់ការបង្កើនសិទ្ធិបន្ថែមតាមរយៈ KernelSU នៅក្នុងបរិបទនៃប្រវត្តិរូប root នេះ។</string>
     <string name="install_force_backup">បម្រុងទុកជារូបភាពដើម</string>

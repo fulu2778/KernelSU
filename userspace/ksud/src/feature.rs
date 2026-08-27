@@ -21,7 +21,6 @@ pub enum FeatureId {
     Sulog = 2,
     AdbRoot = 3,
     SelinuxHide = 4,
-    MountHide = 5,
     BootconfigHide = 6,
     SelinuxSpoof = 7,
     WebviewZygoteUmount = 8,
@@ -35,7 +34,6 @@ impl FeatureId {
             2 => Some(Self::Sulog),
             3 => Some(Self::AdbRoot),
             4 => Some(Self::SelinuxHide),
-            5 => Some(Self::MountHide),
             6 => Some(Self::BootconfigHide),
             7 => Some(Self::SelinuxSpoof),
             8 => Some(Self::WebviewZygoteUmount),
@@ -50,7 +48,6 @@ impl FeatureId {
             Self::Sulog => "sulog",
             Self::AdbRoot => "adb_root",
             Self::SelinuxHide => "selinux_hide",
-            Self::MountHide => "mount_hide",
             Self::BootconfigHide => "bootconfig_hide",
             Self::SelinuxSpoof => "selinux_spoof",
             Self::WebviewZygoteUmount => "webview_zygote_umount",
@@ -72,9 +69,6 @@ impl FeatureId {
             Self::SelinuxHide => {
                 "SELinux Hide - sanitize /sys/fs/selinux access results for app UIDs"
             }
-            Self::MountHide => {
-                "Mount Hide - hide module mounts from /proc output while keeping modules functional"
-            }
             Self::BootconfigHide => {
                 "Bootconfig Hide - spoof verified-boot state in /proc/bootconfig for non-root readers"
             }
@@ -95,7 +89,6 @@ fn parse_feature_id(name: &str) -> Result<FeatureId> {
         "sulog" | "2" => Ok(FeatureId::Sulog),
         "adb_root" | "3" => Ok(FeatureId::AdbRoot),
         "selinux_hide" | "4" => Ok(FeatureId::SelinuxHide),
-        "mount_hide" | "5" => Ok(FeatureId::MountHide),
         "bootconfig_hide" | "6" => Ok(FeatureId::BootconfigHide),
         "selinux_spoof" | "7" => Ok(FeatureId::SelinuxSpoof),
         "webview_zygote_umount" | "8" => Ok(FeatureId::WebviewZygoteUmount),
@@ -315,8 +308,7 @@ pub fn set_feature(id: &str, value: u64) -> Result<()> {
     set_kernel_feature(feature_id, value)?;
 
     // 持久化: feature set 同时写 config, 重启后 init_features 按此重放。
-    // 否则仅改内核内存态, 重启即恢复默认 (mount_hide 默认开启, 用户
-    // 关闭后下次开机又被顶回)。
+    // 否则仅改内核内存态, 重启即恢复默认。
     {
         let mut features = load_binary_config().unwrap_or_default();
         features.insert(feature_id as u32, value);
@@ -358,7 +350,6 @@ pub fn list_features() {
         FeatureId::Sulog,
         FeatureId::AdbRoot,
         FeatureId::SelinuxHide,
-        FeatureId::MountHide,
         FeatureId::BootconfigHide,
         FeatureId::SelinuxSpoof,
         FeatureId::WebviewZygoteUmount,
@@ -425,7 +416,6 @@ pub fn save_config() -> Result<()> {
         FeatureId::Sulog,
         FeatureId::AdbRoot,
         FeatureId::SelinuxHide,
-        FeatureId::MountHide,
         FeatureId::BootconfigHide,
         FeatureId::SelinuxSpoof,
         FeatureId::WebviewZygoteUmount,

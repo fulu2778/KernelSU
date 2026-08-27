@@ -103,8 +103,8 @@ Kanalımıza %2$s qoşulun</string>
     <string name="settings_fake_lock">Hide unlock status</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
-    <string name="settings_mount_hide">Mount gizlə</string>
-    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
+
+
 
     <string name="profile_flags_desc_no_new_privs">Bu root profili kontekstində KernelSU vasitəsilə əlavə səlahiyyət yüksəltməsinin qarşısını alır.</string>
     <string name="install_force_backup">Orijinal imic kimi yedəklə</string>

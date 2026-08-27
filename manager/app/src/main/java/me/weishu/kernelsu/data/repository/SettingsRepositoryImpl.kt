@@ -192,14 +192,6 @@ class SettingsRepositoryImpl : SettingsRepository {
     override fun setSelinuxSpoofEnabled(enabled: Boolean): Boolean =
         execKsud("feature set selinux_spoof ${if (enabled) 1 else 0}", true)
 
-    override suspend fun getMountHideStatus(): String = getFeatureStatus("mount_hide")
-
-    override fun isMountHideEnabled(): Boolean = Natives.isMountHideEnabled()
-
-    override fun setMountHideEnabled(enabled: Boolean): Int =
-        // 走 ksud feature set 持久化到 .feature_config, 否则重启后被重放回默认值
-        if (execKsud("feature set mount_hide ${if (enabled) 1 else 0}", true)) 0 else -1
-
     override suspend fun getSulogStatus(): String = getFeatureStatus("sulog")
 
     override suspend fun getSulogPersistValue(): Long? = getFeaturePersistValue("sulog")

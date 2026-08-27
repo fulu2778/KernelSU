@@ -148,8 +148,8 @@
     <string name="settings_fake_lock">Hide unlock status</string>
     <string name="settings_fake_lock_summary">Disguise the bootloader as locked so apps cannot detect that it is unlocked</string>
 
-    <string name="settings_mount_hide">Masquer les montages</string>
-    <string name="settings_mount_hide_summary">Only module mounts are hidden from mount listings; system mounts stay untouched and modules keep working</string>
+
+
 
     <string name="install_select_partition">Sélectionner une partition</string>
     <string name="metamodule_uninstall_confirm">Voulez-vous vraiment désinstaller le module %s ? Cette action affectera tous les modules, et certaines fonctionnalités fournies par le métamodule (telles que le montage) ne fonctionneront plus.</string>

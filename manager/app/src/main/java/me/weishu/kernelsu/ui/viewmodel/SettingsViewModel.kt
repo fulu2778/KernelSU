@@ -70,9 +70,7 @@ class SettingsViewModel(
             val isSulogEnabled = repo.getSulogPersistValue() == 1L
             val adbRootStatus = repo.getAdbRootStatus()
             val isAdbRootEnabled = repo.getAdbRootPersistValue() == 1L
-            val mountHideStatus = repo.getMountHideStatus()
-            val isMountHideEnabled = repo.isMountHideEnabled()
-            val isFullFeatured = Natives.isManager && !Natives.requireNewKernel() && rootAvailable()
+                        val isFullFeatured = Natives.isManager && !Natives.requireNewKernel() && rootAvailable()
             val isFakeLockEnabled = FakeLockRepository().isEnabled()
             val isDefaultUmountModules = repo.isDefaultUmountModules()
             val uiMode = repo.uiMode
@@ -111,9 +109,7 @@ class SettingsViewModel(
                     isSelinuxSpoofEnabled = isSelinuxSpoofEnabled,
                     sulogStatus = sulogStatus,
                     isSulogEnabled = isSulogEnabled,
-                    mountHideStatus = mountHideStatus,
-                    isMountHideEnabled = isMountHideEnabled,
-                    isFullFeatured = isFullFeatured,
+                                        isFullFeatured = isFullFeatured,
                     isFakeLockEnabled = isFakeLockEnabled,
                     isDefaultUmountModules = isDefaultUmountModules,
                     isLkmMode = isLkmMode,
@@ -277,15 +273,6 @@ class SettingsViewModel(
             if (repo.setKernelUmountEnabled(enabled)) {
                 repo.execKsudFeatureSave()
                 _uiState.update { it.copy(isKernelUmountEnabled = enabled) }
-            }
-        }
-    }
-
-    fun setMountHideEnabled(enabled: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (repo.setMountHideEnabled(enabled) == 0) {
-                repo.execKsudFeatureSave()
-                _uiState.update { it.copy(isMountHideEnabled = enabled) }
             }
         }
     }
