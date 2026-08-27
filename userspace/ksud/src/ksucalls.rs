@@ -275,28 +275,6 @@ pub fn umount_list_del(path: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Register a mountpoint to be hidden from /proc mounts output.
-/// The kernel moves its mnt_id into the high range so mount_hide filters it.
-/// Call after the mount is successfully created (who mounts, registers).
-pub fn mount_hide(path: &str) -> anyhow::Result<()> {
-    let c_path = std::ffi::CString::new(path)?;
-    let mut cmd = ksu_uapi::ksu_hide_mount_cmd {
-        path: c_path.as_ptr() as u64,
-    };
-    ksuctl(ksu_uapi::KSU_IOCTL_HIDE_MOUNT, &raw mut cmd)?;
-    Ok(())
-}
-
-/// Undo mount_hide: restore the mountpoint visible in /proc mounts output.
-pub fn mount_unhide(path: &str) -> anyhow::Result<()> {
-    let c_path = std::ffi::CString::new(path)?;
-    let mut cmd = ksu_uapi::ksu_hide_mount_cmd {
-        path: c_path.as_ptr() as u64,
-    };
-    ksuctl(ksu_uapi::KSU_IOCTL_UNHIDE_MOUNT, &raw mut cmd)?;
-    Ok(())
-}
-
 /// Set current process's process group to init_group (pgid = 0)
 pub fn set_init_pgrp() -> std::io::Result<()> {
     ksuctl(

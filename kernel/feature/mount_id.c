@@ -107,48 +107,6 @@ static void restore_sus_mnt_id(void *mnt)
     pr_info("mount_id: unhide mnt id %d -> %d\n", old_id, new_id);
 }
 
-/* 显式登记(隐藏): 解析挂载点路径, 把其 mnt_id 换到高位。
- * 创建方(模块服务/脚本)在挂载成功后调用, 用于内核侧无法可靠判定
- * 但明确是模块挂载的挂载(如 overlay)。进程上下文, 可睡眠。 */
-int ksu_mount_id_hide_path(const char *pathname)
-{
-    struct path path;
-    int err;
-
-    if (!mount_id_active || !mnt_id_ida_p)
-        return -ENODEV;
-
-    err = kern_path(pathname, LOOKUP_FOLLOW, &path);
-    if (err)
-        return err;
-
-    if (path.mnt)
-        reassign_sus_mnt_id((void *)((char *)path.mnt - MOUNT_OFF_MNT));
-
-    path_put(&path);
-    return 0;
-}
-
-/* 显式撤销(恢复可见) */
-int ksu_mount_id_unhide_path(const char *pathname)
-{
-    struct path path;
-    int err;
-
-    if (!mount_id_active || !mnt_id_ida_p)
-        return -ENODEV;
-
-    err = kern_path(pathname, LOOKUP_FOLLOW, &path);
-    if (err)
-        return err;
-
-    if (path.mnt)
-        restore_sus_mnt_id((void *)((char *)path.mnt - MOUNT_OFF_MNT));
-
-    path_put(&path);
-    return 0;
-}
-
 /* clone_mnt(old, root, flag) -> struct mount*: bind 挂载的主路径。
  * root 参数即 bind 的源文件 dentry —— dentry_path_raw 可拿源路径,
  * 命中 /adb/modules 即模块挂载 (零偏移依赖)。 */
