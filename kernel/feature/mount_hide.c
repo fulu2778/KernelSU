@@ -25,6 +25,7 @@
 
 #include "mount_hide.h"
 #include "mount_id.h"
+#include "fs/mount.h"
 #include "arch.h"
 #include "policy/feature.h"
 #include "infra/symbol_resolver.h"

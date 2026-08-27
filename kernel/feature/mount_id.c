@@ -23,6 +23,7 @@
 
 #include "mount_id.h"
 #include "mount_hide.h"
+#include "fs/mount.h"
 #include "arch.h"
 #include "infra/symbol_resolver.h"
 #include "klog.h"
@@ -38,6 +39,7 @@
 #include <linux/module.h>
 #include <linux/mount.h>
 #include <linux/sched.h>
+#include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/string.h>
 #include <linux/version.h>
@@ -48,10 +50,13 @@
 static struct ida *mnt_id_ida_p;
 static bool mount_id_active;
 
-/* 判据: ksu 域 */
-typedef int (*context_to_sid_t)(const char *scontext, u32 scontext_len, u32 *out_sid);
-static context_to_sid_t context_to_sid_fn;
-static u32 (*current_sid_fn)(void);
+/* 判据: 纯数值 SID 比较 —— init 时一次性把 ksu 域 context 解析为 u32,
+ * 挂载时仅比较 current_sid() == ksu_sid。不做任何运行时字符串比较
+ * (无 secid_to_secctx/strcmp 回退)。 */
+
+typedef int (*ctx_to_sid_t)(const char *scontext, u32 scontext_len, u32 *out_sid);
+static ctx_to_sid_t ctx_to_sid_fn;
+static u32 (*cur_sid_fn)(void);
 static u32 ksu_sid;
 static bool ksu_sid_valid;
 
@@ -75,10 +80,10 @@ static void set_mnt_id_of(struct vfsmount *vm, int id)
     container_of(vm, struct mount, mnt)->mnt_id = id;
 }
 
-/* 判据: 当前进程是否 ksu 域 */
-static bool is_ksu_domain(void)
+/* 判据: 当前进程是否 ksu 域(纯 u32 比较, 无字符串回退) */
+static bool ksu_mount_id_ksu_domain(void)
 {
-    return ksu_sid_valid && current_sid_fn && current_sid_fn() == ksu_sid;
+    return ksu_sid_valid && cur_sid_fn && cur_sid_fn() == ksu_sid;
 }
 
 /* 置高位(标记): 低位 id 归还 ida, 换到 >= DEFAULT_KSU_MNT_ID */
@@ -119,12 +124,11 @@ static void restore_sus_mnt_id(struct vfsmount *vm)
 static void ksu_mount_id_maybe_mark(struct vfsmount *vm)
 {
     struct marked_mount *e;
-    unsigned long flags;
     bool found = false;
 
     if (!mount_id_active || !mnt_id_ida_p || IS_ERR_OR_NULL(vm))
         return;
-    if (!is_ksu_domain())
+    if (!ksu_mount_id_ksu_domain())
         return;
 
     spin_lock(&marked_lock);
@@ -159,7 +163,6 @@ static void ksu_mount_id_maybe_mark(struct vfsmount *vm)
 void ksu_mount_id_restore_all(void)
 {
     struct marked_mount *e;
-    unsigned long flags;
 
     spin_lock(&marked_lock);
     list_for_each_entry (e, &marked_list, list) {
@@ -175,7 +178,6 @@ void ksu_mount_id_restore_all(void)
 void ksu_mount_id_remark_all(void)
 {
     struct marked_mount *e;
-    unsigned long flags;
 
     spin_lock(&marked_lock);
     list_for_each_entry (e, &marked_list, list) {
@@ -228,20 +230,20 @@ static void kr_teardown(struct kretprobe *kr)
     }
 }
 
-/* ksu 域 SID 解析: security_context_to_sid / current_sid 走符号解析 */
+/* ksu 域 SID 一次性解析(init): context -> sid, 之后判据只比 u32 */
 static void sid_init(void)
 {
-    context_to_sid_fn = (context_to_sid_t)find_kernel_symbol_exact("security_context_to_sid");
-    current_sid_fn = (u32 (*)(void))find_kernel_symbol_exact("current_sid");
-    if (!context_to_sid_fn || !current_sid_fn) {
-        pr_warn("mount_id: sid functions unavailable, judge degraded\n");
+    ctx_to_sid_fn = (ctx_to_sid_t)find_kernel_symbol_exact("security_context_to_sid");
+    cur_sid_fn = (u32 (*)(void))find_kernel_symbol_exact("current_sid");
+    if (!ctx_to_sid_fn || !cur_sid_fn) {
+        pr_warn("mount_id: sid symbols unavailable, judge disabled\n");
         return;
     }
-    if (context_to_sid_fn(KERNEL_SU_CONTEXT, strlen(KERNEL_SU_CONTEXT), &ksu_sid) == 0) {
+    if (ctx_to_sid_fn(KERNEL_SU_CONTEXT, strlen(KERNEL_SU_CONTEXT), &ksu_sid) == 0) {
         ksu_sid_valid = true;
         pr_info("mount_id: ksu sid = %u\n", ksu_sid);
     } else {
-        pr_warn("mount_id: cannot resolve ksu domain sid\n");
+        pr_warn("mount_id: ksu domain sid unresolvable, judge disabled\n");
     }
 }
 
@@ -270,7 +272,6 @@ int __init ksu_mount_id_init(void)
 void __exit ksu_mount_id_exit(void)
 {
     struct marked_mount *e, *tmp;
-    unsigned long flags;
 
     mount_id_active = false;
     ksu_mount_id_restore_all();
