@@ -5,7 +5,6 @@
 #include "selinux/selinux.h"
 #include <asm/syscall.h>
 #include <linux/ptrace.h>
-#include <linux/uaccess.h>
 #include <linux/static_key.h>
 
 #include "arch.h"
@@ -19,7 +18,6 @@
 #include "hook/syscall_hook.h"
 #include "hook/syscall_event_bridge.h"
 #include "feature/adb_root.h"
-#include "feature/hide_path.h"
 
 static int ksu_handle_init_mark_tracker(const char __user **filename_user)
 {
@@ -50,29 +48,8 @@ static int ksu_handle_init_mark_tracker(const char __user **filename_user)
     return 0;
 }
 
-static long ksu_hide_path_stat_check(const struct pt_regs *regs)
-{
-    const char __user **filename_user = (const char __user **)&PT_REGS_PARM2(regs);
-    char path[256];
-    long ret;
-
-    /* 无登记路径时直接放行(判据内部也有 count==0 早退, 这里省一次调用) */
-    ret = strncpy_from_user(path, *filename_user, sizeof(path) - 1);
-    if (ret < 0)
-        return 0;
-    path[ret] = '\0';
-
-    if (ksu_hide_path_match_pathname(path))
-        return -ENOENT;
-    return 0;
-}
-
 long __nocfi ksu_hook_newfstatat(int orig_nr, const struct pt_regs *regs)
 {
-    long hidden = ksu_hide_path_stat_check(regs);
-    if (hidden)
-        return hidden;
-
     if (!ksu_su_compat_enabled)
         return ksu_syscall_table[orig_nr](regs);
 
@@ -81,24 +58,10 @@ long __nocfi ksu_hook_newfstatat(int orig_nr, const struct pt_regs *regs)
 
 long __nocfi ksu_hook_faccessat(int orig_nr, const struct pt_regs *regs)
 {
-    long hidden = ksu_hide_path_stat_check(regs);
-    if (hidden)
-        return hidden;
-
     if (!ksu_su_compat_enabled)
         return ksu_syscall_table[orig_nr](regs);
 
     return ksu_handle_faccessat_sucompat(orig_nr, (struct pt_regs *)regs);
-}
-
-/* openat: 检测器最常用探测面 —— 隐藏命中返回 ENOENT, 否则原路放行 */
-long __nocfi ksu_hook_openat(int orig_nr, const struct pt_regs *regs)
-{
-    long hidden = ksu_hide_path_stat_check(regs);
-    if (hidden)
-        return hidden;
-
-    return ksu_syscall_table[orig_nr](regs);
 }
 
 DEFINE_STATIC_KEY_TRUE(ksud_execve_key);

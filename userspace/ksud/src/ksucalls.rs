@@ -287,28 +287,6 @@ pub fn mount_hide(path: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Register a path to be hidden from stat/open/readdir.
-/// The kernel makes it ENOENT (stat/open) and skips it (readdir).
-/// Call after the path exists (who owns, registers).
-pub fn path_hide(path: &str) -> anyhow::Result<()> {
-    let c_path = std::ffi::CString::new(path)?;
-    let mut cmd = ksu_uapi::ksu_hide_path_cmd {
-        path: c_path.as_ptr() as u64,
-    };
-    ksuctl(ksu_uapi::KSU_IOCTL_HIDE_PATH, &raw mut cmd)?;
-    Ok(())
-}
-
-/// Undo path_hide: restore the path visible in stat/open/readdir.
-pub fn path_unhide(path: &str) -> anyhow::Result<()> {
-    let c_path = std::ffi::CString::new(path)?;
-    let mut cmd = ksu_uapi::ksu_hide_path_cmd {
-        path: c_path.as_ptr() as u64,
-    };
-    ksuctl(ksu_uapi::KSU_IOCTL_UNHIDE_PATH, &raw mut cmd)?;
-    Ok(())
-}
-
 /// Undo mount_hide: restore the mountpoint visible in /proc mounts output.
 pub fn mount_unhide(path: &str) -> anyhow::Result<()> {
     let c_path = std::ffi::CString::new(path)?;

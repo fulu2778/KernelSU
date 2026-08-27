@@ -14,7 +14,6 @@
 #include "runtime/ksud_boot.h"
 #include "feature/kernel_umount.h"
 #include "feature/mount_id.h"
-#include "feature/hide_path.h"
 #include "manager/manager_identity.h"
 #include "selinux/selinux.h"
 #include "infra/file_wrapper.h"
@@ -562,38 +561,6 @@ static int do_unhide_mount(void __user *arg)
     return ksu_mount_id_unhide_path(buf);
 }
 
-/* 路径隐藏登记: 让 stat/open/access/readdir 对该路径不可见。创建方登记。 */
-static int do_hide_path(void __user *arg)
-{
-    struct ksu_hide_path_cmd cmd;
-    char buf[256];
-
-    if (copy_from_user(&cmd, arg, sizeof(cmd)))
-        return -EFAULT;
-
-    if (strncpy_from_user(buf, (const char __user *)cmd.path, sizeof(buf) - 1) <= 0)
-        return -EFAULT;
-
-    buf[sizeof(buf) - 1] = '\0';
-    return ksu_hide_path_register(buf);
-}
-
-/* 撤销路径隐藏 */
-static int do_unhide_path(void __user *arg)
-{
-    struct ksu_hide_path_cmd cmd;
-    char buf[256];
-
-    if (copy_from_user(&cmd, arg, sizeof(cmd)))
-        return -EFAULT;
-
-    if (strncpy_from_user(buf, (const char __user *)cmd.path, sizeof(buf) - 1) <= 0)
-        return -EFAULT;
-
-    buf[sizeof(buf) - 1] = '\0';
-    return ksu_hide_path_unregister(buf);
-}
-
 struct list_head mount_list = LIST_HEAD_INIT(mount_list);
 DECLARE_RWSEM(mount_list_lock);
 
@@ -894,18 +861,6 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
         .cmd = KSU_IOCTL_UNHIDE_MOUNT,
         .name = "UNHIDE_MOUNT",
         .handler = do_unhide_mount,
-        .perm_check = manager_or_root
-    },
-    {
-        .cmd = KSU_IOCTL_HIDE_PATH,
-        .name = "HIDE_PATH",
-        .handler = do_hide_path,
-        .perm_check = manager_or_root
-    },
-    {
-        .cmd = KSU_IOCTL_UNHIDE_PATH,
-        .name = "UNHIDE_PATH",
-        .handler = do_unhide_path,
         .perm_check = manager_or_root
     },
     {
