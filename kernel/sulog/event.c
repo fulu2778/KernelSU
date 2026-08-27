@@ -138,6 +138,51 @@ static __u32 ksu_sulog_copy_filename(const char __user *filename_user, char *dst
     return ret + 1;
 }
 
+/* 参数边界保留: 含空格/引号/反斜杠/控制字符的参数以 POSIX 单引号包裹,
+ * 截断按整参丢弃(不产生半个引号的残缺串) —— 输出始终可逆解析回参数边界。 */
+static bool ksu_sulog_arg_needs_quote(const char *arg, size_t arg_len)
+{
+    size_t i;
+
+    for (i = 0; i < arg_len; i++) {
+        char c = arg[i];
+
+        if (c == ' ' || c == '\t' || c == '\'' || c == '\\' || c < 0x20 || c == 0x7f)
+            return true;
+    }
+    return false;
+}
+
+static __u32 ksu_sulog_quoted_len(const char *arg, size_t arg_len)
+{
+    size_t len = 2; /* 首尾单引号 */
+    size_t i;
+
+    for (i = 0; i < arg_len; i++) {
+        if (arg[i] == '\'')
+            len += 4; /* '\'' */
+        else
+            len += 1;
+    }
+    return (__u32)len;
+}
+
+static void ksu_sulog_write_quoted(char *dst, const char *arg, size_t arg_len)
+{
+    size_t i;
+
+    *dst++ = '\'';
+    for (i = 0; i < arg_len; i++) {
+        if (arg[i] == '\'') {
+            memcpy(dst, "'\\''", 4);
+            dst += 4;
+        } else {
+            *dst++ = arg[i];
+        }
+    }
+    *dst++ = '\'';
+}
+
 static __u32 ksu_sulog_flatten_argv(const char __user *const __user *argv_user, char *dst, __u32 dst_len)
 {
     struct user_arg_ptr argv = ksu_sulog_user_argv(argv_user);
@@ -155,6 +200,8 @@ static __u32 ksu_sulog_flatten_argv(const char __user *const __user *argv_user, 
         const char __user *arg_user;
         long copied;
         size_t arg_len;
+        __u32 need;
+        bool quoted;
 
         if (fatal_signal_pending(current))
             break;
@@ -177,18 +224,23 @@ static __u32 ksu_sulog_flatten_argv(const char __user *const __user *argv_user, 
         if (!arg_len)
             continue;
 
-        if (used && used < dst_len - 1)
+        quoted = ksu_sulog_arg_needs_quote(arg, arg_len);
+        need = quoted ? ksu_sulog_quoted_len(arg, arg_len) : (__u32)arg_len;
+
+        /* 整参放不下: 丢弃(干净边界), 不再产残缺串 */
+        if (used > 0 && used + 1 + need > dst_len - 1)
+            break;
+        if (used == 0 && need > dst_len - 1)
+            break;
+
+        if (used)
             dst[used++] = ' ';
 
-        if (used >= dst_len - 1)
-            break;
-
-        arg_len = min_t(size_t, arg_len, dst_len - used - 1);
-        memcpy(dst + used, arg, arg_len);
-        used += arg_len;
-
-        if (used >= dst_len - 1)
-            break;
+        if (quoted)
+            ksu_sulog_write_quoted(dst + used, arg, arg_len);
+        else
+            memcpy(dst + used, arg, arg_len);
+        used += need;
     }
 
     dst[used] = '\0';
