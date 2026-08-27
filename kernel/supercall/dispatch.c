@@ -13,6 +13,7 @@
 #include "ksu.h"
 #include "runtime/ksud_boot.h"
 #include "feature/kernel_umount.h"
+#include "feature/mount_id.h"
 #include "manager/manager_identity.h"
 #include "selinux/selinux.h"
 #include "infra/file_wrapper.h"
@@ -527,6 +528,39 @@ static int do_nuke_ext4_sysfs(void __user *arg)
     return nuke_ext4_sysfs(mnt);
 }
 
+/* 显式登记: 把挂载点路径的 mnt_id 换到高位空间, 供 mount_hide 输出过滤。
+ * 由创建方(模块服务/脚本)在挂载成功后调用。进程上下文, 可睡眠。 */
+static int do_hide_mount(void __user *arg)
+{
+    struct ksu_hide_mount_cmd cmd;
+    char buf[256];
+
+    if (copy_from_user(&cmd, arg, sizeof(cmd)))
+        return -EFAULT;
+
+    if (strncpy_from_user(buf, (const char __user *)cmd.path, sizeof(buf) - 1) <= 0)
+        return -EFAULT;
+
+    buf[sizeof(buf) - 1] = '\0';
+    return ksu_mount_id_hide_path(buf);
+}
+
+/* 撤销登记: 恢复挂载可见 */
+static int do_unhide_mount(void __user *arg)
+{
+    struct ksu_hide_mount_cmd cmd;
+    char buf[256];
+
+    if (copy_from_user(&cmd, arg, sizeof(cmd)))
+        return -EFAULT;
+
+    if (strncpy_from_user(buf, (const char __user *)cmd.path, sizeof(buf) - 1) <= 0)
+        return -EFAULT;
+
+    buf[sizeof(buf) - 1] = '\0';
+    return ksu_mount_id_unhide_path(buf);
+}
+
 struct list_head mount_list = LIST_HEAD_INIT(mount_list);
 DECLARE_RWSEM(mount_list_lock);
 
@@ -815,6 +849,18 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
         .cmd = KSU_IOCTL_ADD_TRY_UMOUNT,
         .name = "ADD_TRY_UMOUNT",
         .handler = add_try_umount,
+        .perm_check = manager_or_root
+    },
+    {
+        .cmd = KSU_IOCTL_HIDE_MOUNT,
+        .name = "HIDE_MOUNT",
+        .handler = do_hide_mount,
+        .perm_check = manager_or_root
+    },
+    {
+        .cmd = KSU_IOCTL_UNHIDE_MOUNT,
+        .name = "UNHIDE_MOUNT",
+        .handler = do_unhide_mount,
         .perm_check = manager_or_root
     },
     {

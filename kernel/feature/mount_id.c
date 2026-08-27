@@ -35,6 +35,7 @@
 #include <linux/fs.h>
 #include <linux/idr.h>
 #include <linux/mount.h>
+#include <linux/namei.h>
 #include <linux/kernel.h>
 #include <linux/kprobes.h>
 #include <linux/module.h>
@@ -82,6 +83,70 @@ static void reassign_sus_mnt_id(void *mnt)
     set_mnt_id_of(vm, new_id);
     ida_free(mnt_id_ida_p, old_id); /* 低 id 归还, 后续正常挂载可复用 */
     pr_info("mount_id: sus mount id %d -> %d\n", old_id, new_id);
+}
+
+/* 逆操作: 高位 id 归还, 分配新低位 id (恢复可见, 低值序列重新连续) */
+static void restore_sus_mnt_id(void *mnt)
+{
+    struct vfsmount *vm = (struct vfsmount *)((char *)mnt + MOUNT_OFF_MNT);
+    int old_id, new_id;
+
+    if (!mount_id_active || !mnt_id_ida_p || !mnt)
+        return;
+
+    old_id = mnt_id_of(vm);
+    if (old_id < DEFAULT_KSU_MNT_ID)
+        return; /* 已是低位, 无需恢复 */
+
+    new_id = ida_alloc_min(mnt_id_ida_p, 1, GFP_ATOMIC);
+    if (new_id < 0)
+        return;
+
+    set_mnt_id_of(vm, new_id);
+    ida_free(mnt_id_ida_p, old_id);
+    pr_info("mount_id: unhide mnt id %d -> %d\n", old_id, new_id);
+}
+
+/* 显式登记(隐藏): 解析挂载点路径, 把其 mnt_id 换到高位。
+ * 创建方(模块服务/脚本)在挂载成功后调用, 用于内核侧无法可靠判定
+ * 但明确是模块挂载的挂载(如 overlay)。进程上下文, 可睡眠。 */
+int ksu_mount_id_hide_path(const char *pathname)
+{
+    struct path path;
+    int err;
+
+    if (!mount_id_active || !mnt_id_ida_p)
+        return -ENODEV;
+
+    err = kern_path(pathname, LOOKUP_FOLLOW, &path);
+    if (err)
+        return err;
+
+    if (path.mnt)
+        reassign_sus_mnt_id((void *)((char *)path.mnt - MOUNT_OFF_MNT));
+
+    path_put(&path);
+    return 0;
+}
+
+/* 显式撤销(恢复可见) */
+int ksu_mount_id_unhide_path(const char *pathname)
+{
+    struct path path;
+    int err;
+
+    if (!mount_id_active || !mnt_id_ida_p)
+        return -ENODEV;
+
+    err = kern_path(pathname, LOOKUP_FOLLOW, &path);
+    if (err)
+        return err;
+
+    if (path.mnt)
+        restore_sus_mnt_id((void *)((char *)path.mnt - MOUNT_OFF_MNT));
+
+    path_put(&path);
+    return 0;
 }
 
 /* clone_mnt(old, root, flag) -> struct mount*: bind 挂载的主路径。

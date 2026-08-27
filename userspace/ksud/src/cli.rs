@@ -480,6 +480,17 @@ enum Kernel {
         #[command(subcommand)]
         command: UmountOp,
     },
+    /// Register a mountpoint to be hidden from /proc mounts output
+    /// (moves its mnt_id into the high range so mount_hide filters it)
+    HideMount {
+        /// mount point path
+        mnt: String,
+    },
+    /// Undo HideMount: restore the mountpoint visible
+    UnhideMount {
+        /// mount point path
+        mnt: String,
+    },
     /// Notify that module is mounted
     NotifyModuleMounted,
 }
@@ -826,6 +837,8 @@ pub fn run() -> Result<()> {
                 UmountOp::Del { mnt } => ksucalls::umount_list_del(&mnt),
                 UmountOp::Wipe => ksucalls::umount_list_wipe().map_err(Into::into),
             },
+            Kernel::HideMount { mnt } => ksucalls::mount_hide(&mnt),
+            Kernel::UnhideMount { mnt } => ksucalls::mount_unhide(&mnt),
             Kernel::NotifyModuleMounted => {
                 ksucalls::report_module_mounted();
                 Ok(())
