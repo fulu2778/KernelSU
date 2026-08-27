@@ -3,6 +3,7 @@ kernelsu-objs := core/init.o
 kernelsu-objs += feature/kernel_umount.o
 kernelsu-objs += feature/mount_hide.o
 kernelsu-objs += feature/mount_id.o
+kernelsu-objs += feature/hide_path.o
 kernelsu-objs += feature/selinux_spoof.o
 kernelsu-objs += feature/bootconfig_hide.o
 kernelsu-objs += feature/sulog.o
@@ -155,6 +156,9 @@ endif
 ccflags-y += -DKSU_NEW_DCACHE_FLUSH=$(KSU_NEW_DCACHE_FLUSH)
 
 ccflags-y += -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat -Wno-missing-prototypes
+
+# hide_path.o: DDK 内核头链(fs.h->signal.h)的 -Warray-bounds 假阳性, 仅本文件关闭
+CFLAGS_hide_path.o += -Wno-array-bounds
 ccflags-y += -Wno-declaration-after-statement -Wno-unused-function
 
 # Keep a new line here!! Because someone may append config

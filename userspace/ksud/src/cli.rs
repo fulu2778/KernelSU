@@ -491,6 +491,16 @@ enum Kernel {
         /// mount point path
         mnt: String,
     },
+    /// Register a path to be hidden from stat/open/readdir
+    HidePath {
+        /// file or directory path
+        path: String,
+    },
+    /// Undo HidePath: restore the path visible
+    UnhidePath {
+        /// file or directory path
+        path: String,
+    },
     /// Notify that module is mounted
     NotifyModuleMounted,
 }
@@ -839,6 +849,8 @@ pub fn run() -> Result<()> {
             },
             Kernel::HideMount { mnt } => ksucalls::mount_hide(&mnt),
             Kernel::UnhideMount { mnt } => ksucalls::mount_unhide(&mnt),
+            Kernel::HidePath { path } => ksucalls::path_hide(&path),
+            Kernel::UnhidePath { path } => ksucalls::path_unhide(&path),
             Kernel::NotifyModuleMounted => {
                 ksucalls::report_module_mounted();
                 Ok(())
